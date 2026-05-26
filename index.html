@@ -92,4 +92,61 @@
                 const { data: rest } = await supabase.from('restaurantes').select('id').limit(1).single();
                 
                 // Buscamos las mesas de esa zona
-                const { data: mesasZona } = await supabase.from('mesas').select('*'
+                const { data: mesasZona } = await supabase.from('mesas').select('*').eq('zona', zona);
+                
+                // Buscamos las reservas de ese día
+                const { data: reservasDia } = await supabase.from('reservas').select('mesa_id, hora_inicio').eq('fecha', fecha);
+                
+                // Filtramos mesas que chocan en tiempo (Diferencia de menos de 150 minutos)
+                const horaSolicitadaDate = new Date(`${fecha}T${hora}:00`);
+                const idsMesasOcupadas = (reservasDia || []).filter(res => {
+                    const horaReservaPrevia = new Date(`${fecha}T${res.hora_inicio}`);
+                    const diferenciaMinutos = Math.abs((horaSolicitadaDate - horaReservaPrevia) / 60000);
+                    return diferenciaMinutos < 150; // 2.5 horas = 150 mins
+                }).map(r => r.mesa_id);
+
+                // Elegimos una mesa libre
+                const mesaLibre = mesasZona.find(m => !idsMesasOcupadas.includes(m.id));
+
+                if(!mesaLibre) {
+                    alert(`❌ Lo sentimos, no quedan mesas libres en ${zona} a esa hora.`);
+                    btn.innerHTML = 'Confirmar Reserva';
+                    btn.disabled = false;
+                    return;
+                }
+
+                // Guardamos la reserva
+                await supabase.from('reservas').insert([{
+                    restaurante_id: rest.id, mesa_id: mesaLibre.id, nombre_cliente: nombre,
+                    telefono_cliente: telefono, fecha: fecha, hora_inicio: hora + ':00', estado: 'pendiente'
+                }]);
+
+                // Bloqueamos la mesa para que el camarero la vea ocupada (Si la reserva es inminente de hoy)
+                const ahora = new Date();
+                if(fecha === ahora.toISOString().split('T')[0]) {
+                    const difActual = (horaSolicitadaDate - ahora) / 60000;
+                    if(difActual > -150 && difActual <= 150) {
+                        await supabase.from('mesas').update({ estado_actual: 'reservada' }).eq('id', mesaLibre.id);
+                    }
+                }
+
+                // Telegram
+                const msg = `🍔 *RESERVA CONFIRMADA* 🍔\n👤 *Nombre:* ${nombre}\n📞 *Tlf:* ${telefono}\n📅 *Día:* ${fecha}\n⏰ *Hora:* ${hora}\n📍 *ZONA:* ${zona}`;
+                fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: msg, parse_mode: 'Markdown' })
+                });
+
+                alert(`✅ ¡Reserva en ${zona} confirmada con éxito!`);
+                window.location.reload(); 
+
+            } catch (err) {
+                console.error("Error completo:", err);
+                alert("❌ Error al conectar. Revisa la consola.");
+                btn.innerHTML = 'Confirmar Reserva';
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
