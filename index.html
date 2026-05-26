@@ -17,7 +17,7 @@
     <main class="max-w-xl mx-auto mt-8 px-4 pb-10">
         <div class="bg-white p-6 md:p-8 rounded-xl border-4 border-black shadow-[6px_6px_0px_#E60000]">
             
-            <!-- CABECERA DE LA CAJA (RESERVAR / TU RESERVA) -->
+            <!-- CABECERA -->
             <div class="flex justify-between items-end border-b-4 border-black pb-2 mb-6">
                 <h2 id="titulo-principal" class="text-3xl font-black uppercase text-[#E60000]">Reservar</h2>
                 <button id="btn-cambiar-vista" onclick="cambiarVista()" class="text-sm font-bold text-gray-500 hover:text-black underline uppercase transition">
@@ -30,47 +30,13 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block mb-1">Día</label>
-                        <input type="date" id="input-fecha" onchange="actualizarHoras()" required class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]">
+                        <input type="date" id="input-fecha" onchange="actualizarHoras('input-fecha', 'input-hora')" required class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]">
                     </div>
                     <div>
                         <label class="block mb-1">Hora</label>
                         <select id="input-hora" required class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]"></select>
                     </div>
                 </div>
-
-                <script>
-                    function actualizarHoras() {
-                        const fechaInput = document.getElementById('input-fecha');
-                        const selectHora = document.getElementById('input-hora');
-                        const ahora = new Date();
-                        const year = ahora.getFullYear();
-                        const month = String(ahora.getMonth() + 1).padStart(2, '0');
-                        const day = String(ahora.getDate()).padStart(2, '0');
-                        const hoyIso = `${year}-${month}-${day}`;
-                        
-                        fechaInput.min = hoyIso;
-                        if (!fechaInput.value) fechaInput.value = hoyIso;
-
-                        const fechaSeleccionada = fechaInput.value;
-                        let esHoy = (fechaSeleccionada === hoyIso);
-                        let opcionesHTML = "";
-
-                        for(let h = 8; h <= 23; h++) {
-                            let minutosPosibles = (h === 23) ? ['00'] : ['00', '15', '30', '45'];
-                            for(let m of minutosPosibles) {
-                                let minutosOpcion = (h * 60) + parseInt(m);
-                                let minutosAhora = (ahora.getHours() * 60) + ahora.getMinutes();
-                                if (esHoy && minutosOpcion <= minutosAhora) continue;
-
-                                let horaFormateada = h < 10 ? '0' + h : h; 
-                                opcionesHTML += `<option value="${horaFormateada}:${m}">${horaFormateada}:${m}</option>`;
-                            }
-                        }
-                        if (opcionesHTML === "") opcionesHTML = `<option value="">Cerrado / Sin horas</option>`;
-                        selectHora.innerHTML = opcionesHTML;
-                    }
-                    actualizarHoras();
-                </script>
 
                 <div>
                     <label class="block mb-1">¿Dónde quieres comer?</label>
@@ -82,11 +48,13 @@
 
                 <div>
                     <label class="block mb-1">Nombre Completo <span class="text-red-500">*</span></label>
-                    <input type="text" id="input-nombre" placeholder="Ej: Pablo Gómez" required class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]">
+                    <!-- Eliminamos números del nombre -->
+                    <input type="text" id="input-nombre" placeholder="Ej: Pablo Gómez" oninput="this.value = this.value.replace(/[0-9]/g, '')" required class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]">
                 </div>
                 <div>
                     <label class="block mb-1">Teléfono <span class="text-red-500">*</span></label>
-                    <input type="tel" id="input-telefono" placeholder="Ej: 600123456" required class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]">
+                    <!-- ¡NUEVO! Solo permite números -->
+                    <input type="tel" id="input-telefono" placeholder="Ej: 600123456" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]">
                 </div>
 
                 <button onclick="procesarReserva()" id="btn-reservar" class="mt-8 w-full bg-black text-white font-black text-2xl py-4 rounded border-2 border-black uppercase active:scale-95 transition">
@@ -94,42 +62,65 @@
                 </button>
             </div>
 
-            <!-- VISTA 2: MODIFICAR O CANCELAR RESERVA (Oculta por defecto) -->
+            <!-- VISTA 2: BUSCAR IDENTIFICADOR (Todo junto) -->
             <div id="vista-modificar" class="hidden space-y-4 font-bold">
-                <p class="text-sm text-gray-600 mb-4">Introduce los datos de tu identificador para buscar tu reserva:</p>
+                <p class="text-sm text-gray-600 mb-4">Introduce tu identificador de reserva <b>todo junto</b> (sin espacios):</p>
                 
                 <div>
-                    <label class="block mb-1">Nombre (Sin espacios)</label>
-                    <!-- Al escribir, el texto se pone ROJO automáticamente -->
-                    <input type="text" id="mod-nombre" placeholder="PABLO" class="w-full border-2 border-black p-3 rounded focus:outline-none text-red-600 font-black uppercase focus:border-red-600">
+                    <!-- El usuario escribe todo en esta caja -->
+                    <input type="text" id="mod-identificador" oninput="colorearTexto(this.value)" placeholder="PABLO600123456ABC" class="w-full border-2 border-black p-3 rounded focus:outline-none font-black uppercase text-center tracking-widest focus:border-[#E60000]">
                 </div>
-                <div>
-                    <label class="block mb-1">Teléfono</label>
-                    <!-- Al escribir, el texto se pone AZUL automáticamente -->
-                    <input type="tel" id="mod-telefono" placeholder="600123456" class="w-full border-2 border-black p-3 rounded focus:outline-none text-blue-600 font-black focus:border-blue-600">
-                </div>
-                <div>
-                    <label class="block mb-1">Código de 3 letras</label>
-                    <!-- Al escribir, el texto se pone VERDE automáticamente -->
-                    <input type="text" id="mod-codigo" placeholder="ABC" maxlength="3" class="w-full border-2 border-black p-3 rounded focus:outline-none text-green-600 font-black uppercase focus:border-green-600 tracking-widest">
+                
+                <!-- Aquí se pinta en tiempo real con colores -->
+                <div class="bg-gray-100 p-3 rounded border-2 border-dashed border-gray-400 text-center text-xl font-black tracking-wider break-words min-h-[50px] flex items-center justify-center">
+                    <span id="preview-colores" class="text-gray-400 text-sm">Tu código se pintará aquí...</span>
                 </div>
 
-                <button onclick="buscarReserva()" class="mt-8 w-full bg-black text-white font-black text-2xl py-4 rounded border-2 border-black uppercase active:scale-95 transition">
+                <button id="btn-buscar" onclick="buscarReserva()" class="mt-6 w-full bg-black text-white font-black text-2xl py-4 rounded border-2 border-black uppercase active:scale-95 transition">
                     Buscar mi reserva
                 </button>
+            </div>
+
+            <!-- VISTA 3: GESTIONAR (Cambiar hora o cancelar) -->
+            <div id="vista-gestion" class="hidden space-y-4 font-bold">
+                <div class="bg-gray-100 p-4 rounded border-2 border-black text-center mb-4">
+                    <p class="text-sm text-gray-600 uppercase">Reserva Actual</p>
+                    <p class="text-xl text-[#E60000]">Hola <span id="gest-nombre"></span></p>
+                    <p class="text-md">Zona: <span id="gest-zona" class="uppercase"></span></p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block mb-1">Cambiar Día</label>
+                        <input type="date" id="gest-fecha" onchange="actualizarHoras('gest-fecha', 'gest-hora')" class="w-full border-2 border-black p-3 rounded focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block mb-1">Cambiar Hora</label>
+                        <select id="gest-hora" class="w-full border-2 border-black p-3 rounded focus:outline-none"></select>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-3 mt-6">
+                    <button id="btn-actualizar" onclick="actualizarReserva()" class="w-full bg-blue-600 text-white font-black text-xl py-4 rounded border-2 border-black uppercase active:scale-95 transition">
+                        Guardar Cambios
+                    </button>
+                    <button id="btn-cancelar" onclick="cancelarReserva()" class="w-full bg-red-600 text-white font-black text-xl py-4 rounded border-2 border-black uppercase active:scale-95 transition">
+                        ❌ Cancelar Reserva
+                    </button>
+                </div>
             </div>
 
         </div>
     </main>
 
-    <!-- PANTALLA EMERGENTE (MODAL) DEL IDENTIFICADOR -->
+    <!-- MODAL RESERVA HECHA -->
     <div id="modal-identificador" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50">
         <div class="bg-white border-4 border-black p-6 md:p-8 rounded-xl max-w-md w-full text-center shadow-[8px_8px_0px_#E60000]">
             <h3 class="text-4xl font-black text-[#E60000] uppercase mb-2">¡Reserva Confirmada!</h3>
             <p class="font-bold text-lg mb-4 leading-tight">Guarda este identificador, hazle una captura de pantalla para poder modificar o cancelar tu reserva:</p>
             
-            <!-- EL CÓDIGO CON SUS COLORES -->
-            <div class="text-2xl md:text-3xl font-black bg-gray-100 p-4 rounded border-4 border-black tracking-wider break-words mb-6">
+            <!-- EL CÓDIGO CON SUS COLORES Y TODO JUNTO -->
+            <div class="text-2xl md:text-3xl font-black bg-gray-100 p-4 rounded border-4 border-black tracking-wider break-words mb-6 flex justify-center">
                 <span id="id-nombre" class="text-red-600"></span><span id="id-tel" class="text-blue-600"></span><span id="id-letras" class="text-green-600"></span>
             </div>
             
@@ -140,36 +131,95 @@
     </div>
 
     <script>
-        // FUNCIÓN PARA CAMBIAR ENTRE RESERVAR Y MODIFICAR
-        function cambiarVista() {
-            const vistaReservar = document.getElementById('vista-reservar');
-            const vistaModificar = document.getElementById('vista-modificar');
-            const titulo = document.getElementById('titulo-principal');
-            const btn = document.getElementById('btn-cambiar-vista');
+        const SUPABASE_URL = 'https://ncxrtpmndkmgegtkasub.supabase.co'; 
+        const SUPABASE_ANON_KEY = 'sb_publishable_05L29aUddOhhWdeH7qZiqg_3Xq_EKjC';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        const TELEGRAM_BOT_TOKEN = '8789184996:AAFV2JsCWBcXo-IhC0YYzQuEhuhWPUgHK6k';
+        const TELEGRAM_CHAT_ID = '6519651464';
 
-            if (vistaReservar.classList.contains('hidden')) {
-                vistaReservar.classList.remove('hidden');
-                vistaModificar.classList.add('hidden');
-                titulo.innerText = "Reservar";
-                btn.innerText = "Modificar Reserva";
+        let miReservaActual = null;
+        let miZonaActual = null;
+
+        // 1. GENERADOR DE HORAS (Sirve para ambas pantallas)
+        function actualizarHoras(idFecha, idHora) {
+            const fechaInput = document.getElementById(idFecha);
+            const selectHora = document.getElementById(idHora);
+            if (!fechaInput || !selectHora) return;
+
+            const ahora = new Date();
+            const year = ahora.getFullYear();
+            const month = String(ahora.getMonth() + 1).padStart(2, '0');
+            const day = String(ahora.getDate()).padStart(2, '0');
+            const hoyIso = `${year}-${month}-${day}`;
+            
+            fechaInput.min = hoyIso;
+            if (!fechaInput.value) fechaInput.value = hoyIso;
+
+            const fechaSeleccionada = fechaInput.value;
+            let esHoy = (fechaSeleccionada === hoyIso);
+            let opcionesHTML = "";
+
+            for(let h = 8; h <= 23; h++) {
+                let minutosPosibles = (h === 23) ? ['00'] : ['00', '15', '30', '45'];
+                for(let m of minutosPosibles) {
+                    let minutosOpcion = (h * 60) + parseInt(m);
+                    let minutosAhora = (ahora.getHours() * 60) + ahora.getMinutes();
+                    if (esHoy && minutosOpcion <= minutosAhora) continue;
+
+                    let horaFormateada = h < 10 ? '0' + h : h; 
+                    opcionesHTML += `<option value="${horaFormateada}:${m}">${horaFormateada}:${m}</option>`;
+                }
+            }
+            if (opcionesHTML === "") opcionesHTML = `<option value="">Cerrado / Sin horas</option>`;
+            selectHora.innerHTML = opcionesHTML;
+        }
+        actualizarHoras('input-fecha', 'input-hora');
+
+        // 2. SEPARAR EL CÓDIGO POR COLORES EN TIEMPO REAL
+        function colorearTexto(val) {
+            val = val.toUpperCase().replace(/\s+/g, '');
+            const preview = document.getElementById('preview-colores');
+            if(val === "") {
+                preview.innerHTML = '<span class="text-gray-400 text-sm">Tu código se pintará aquí...</span>';
+                return;
+            }
+            // Expresión para separar: Letras (Nombre) + Números (Teléfono) + Letras (Código Secreto)
+            const regex = /^([A-ZÑÁÉÍÓÚ]*)([0-9]*)([A-ZÑÁÉÍÓÚ]*)$/;
+            const match = val.match(regex);
+
+            if (match) {
+                preview.innerHTML = `<span class="text-red-600">${match[1]||''}</span><span class="text-blue-600">${match[2]||''}</span><span class="text-green-600">${match[3]||''}</span>`;
             } else {
-                vistaReservar.classList.add('hidden');
-                vistaModificar.classList.remove('hidden');
-                titulo.innerText = "Tu Reserva";
-                btn.innerText = "Volver a Reservar";
+                preview.innerHTML = val;
             }
         }
 
-        // FUNCIÓN QUE HARÁ LA BÚSQUEDA EN EL FUTURO (Preparada para cuando ataquemos la base de datos)
-        function buscarReserva() {
-            const n = document.getElementById('mod-nombre').value;
-            const t = document.getElementById('mod-telefono').value;
-            const c = document.getElementById('mod-codigo').value;
-            if(!n || !t || !c) return alert("⚠️ Rellena los 3 colores para buscar tu reserva.");
-            alert("Buscando reserva... (En el próximo paso conectaremos esto a tu Base de Datos para que puedan borrarla).");
+        // 3. NAVEGACIÓN ENTRE VISTAS
+        function cambiarVista() {
+            const vRes = document.getElementById('vista-reservar');
+            const vMod = document.getElementById('vista-modificar');
+            const vGest = document.getElementById('vista-gestion');
+            const titulo = document.getElementById('titulo-principal');
+            const btn = document.getElementById('btn-cambiar-vista');
+
+            if (!vRes.classList.contains('hidden')) {
+                // Ir a Buscar Reserva
+                vRes.classList.add('hidden');
+                vMod.classList.remove('hidden');
+                titulo.innerText = "Tu Reserva";
+                btn.innerText = "Volver a Reservar";
+            } else {
+                // Volver a inicio
+                vRes.classList.remove('hidden');
+                vMod.classList.add('hidden');
+                vGest.classList.add('hidden');
+                titulo.innerText = "Reservar";
+                btn.innerText = "Modificar Reserva";
+            }
         }
 
-        // LÓGICA DE LA RESERVA
+        // 4. CREAR RESERVA (Original)
         async function procesarReserva() {
             const fecha = document.getElementById('input-fecha').value;
             const hora = document.getElementById('input-hora').value;
@@ -177,86 +227,157 @@
             const nombre = document.getElementById('input-nombre').value.trim();
             const telefono = document.getElementById('input-telefono').value.trim();
 
-            if(!fecha || !hora || !nombre || !telefono) {
-                return alert("⚠️ Por favor, rellena tu Nombre y Teléfono obligatoriamente.");
-            }
+            if(!fecha || !hora || !nombre || !telefono) return alert("⚠️ Rellena tu Nombre y Teléfono obligatoriamente.");
 
             const btn = document.getElementById('btn-reservar');
-            btn.innerHTML = 'Enviando...';
-            btn.disabled = true;
+            btn.innerHTML = 'Enviando...'; btn.disabled = true;
 
-            // GENERAMOS LAS 3 LETRAS ALEATORIAS Y EL NOMBRE LIMPIO (Sin espacios)
             const letrasAleatorias = Math.random().toString(36).substring(2, 5).toUpperCase();
             const nombreLimpio = nombre.replace(/\s+/g, '').toUpperCase();
             const identificadorCompleto = `${nombreLimpio}${telefono}${letrasAleatorias}`;
 
             try {
-                // 1. ENVIAR TELEGRAM
-                const TELEGRAM_BOT_TOKEN = '8789184996:AAFV2JsCWBcXo-IhC0YYzQuEhuhWPUgHK6k';
-                const TELEGRAM_CHAT_ID = '6519651464';
-                
-                const msg = `🍔 *NUEVA RESERVA* 🍔\n👤 *Nombre:* ${nombre}\n📞 *Tlf:* ${telefono}\n📅 *Día:* ${fecha}\n⏰ *Hora:* ${hora}\n📍 *Zona:* ${zona}\n🔑 *IDENTIFICADOR:* ${identificadorCompleto}`;
-                
-                await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: msg, parse_mode: 'Markdown' })
-                });
+                // Telegram primero
+                const msg = `🍔 *NUEVA RESERVA* 🍔\n👤 *Nombre:* ${nombre}\n📞 *Tlf:* ${telefono}\n📅 *Día:* ${fecha}\n⏰ *Hora:* ${hora}\n📍 *Zona:* ${zona}\n🔑 *ID:* ${identificadorCompleto}`;
+                await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: msg, parse_mode: 'Markdown' }) });
 
-                // 2. GUARDAR EN SUPABASE
-                try {
-                    const SUPABASE_URL = 'https://ncxrtpmndkmgegtkasub.supabase.co'; 
-                    const SUPABASE_ANON_KEY = 'sb_publishable_05L29aUddOhhWdeH7qZiqg_3Xq_EKjC';
-                    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                // Supabase
+                const { data: mesasZona } = await supabase.from('mesas').select('id').eq('zona', zona);
+                if (mesasZona && mesasZona.length > 0) {
+                    const { data: reservasDia } = await supabase.from('reservas').select('mesa_id, hora_inicio').eq('fecha', fecha);
+                    const horaSol = new Date(`${fecha}T${hora}:00`);
+                    let mesaAsignada = mesasZona.find(m => {
+                        const reservasMesa = (reservasDia || []).filter(r => r.mesa_id === m.id);
+                        return !reservasMesa.some(r => Math.abs((horaSol - new Date(`${fecha}T${r.hora_inicio}`)) / 60000) < 150);
+                    });
 
-                    const { data: mesasZona } = await supabase.from('mesas').select('id').eq('zona', zona);
-                    if (mesasZona && mesasZona.length > 0) {
-                        const { data: reservasDia } = await supabase.from('reservas').select('mesa_id, hora_inicio').eq('fecha', fecha);
-                        const horaSolicitada = new Date(`${fecha}T${hora}:00`);
-                        let mesaAsignada = null;
-
-                        for (let mesa of mesasZona) {
-                            const reservasDeEstaMesa = (reservasDia || []).filter(r => r.mesa_id === mesa.id);
-                            const tieneChoque = reservasDeEstaMesa.some(r => {
-                                const horaReserva = new Date(`${fecha}T${r.hora_inicio}`);
-                                return Math.abs((horaSolicitada - horaReserva) / 60000) < 150; 
-                            });
-
-                            if (!tieneChoque) {
-                                mesaAsignada = mesa;
-                                break;
-                            }
-                        }
-
-                        if (mesaAsignada) {
-                            await supabase.from('reservas').insert([{
-                                mesa_id: mesaAsignada.id, 
-                                nombre_cliente: nombre,
-                                telefono_cliente: telefono, 
-                                fecha: fecha, 
-                                hora_inicio: hora + ':00',
-                                codigo_secreto: letrasAleatorias // Guardamos las 3 letras
-                            }]);
-                        }
+                    if (mesaAsignada) {
+                        await supabase.from('reservas').insert([{
+                            mesa_id: mesaAsignada.id, nombre_cliente: nombre, telefono_cliente: telefono, 
+                            fecha: fecha, hora_inicio: hora + ':00', codigo_secreto: letrasAleatorias
+                        }]);
                     }
-                } catch (dbError) {
-                    console.log("No se pudo conectar a la BD, pero el Telegram se envió correctamente.", dbError);
                 }
 
-                // 3. MOSTRAR EL IDENTIFICADOR VISUALMENTE EN VEZ DEL "ALERT"
+                // Mostrar Modal
                 document.getElementById('id-nombre').innerText = nombreLimpio;
                 document.getElementById('id-tel').innerText = telefono;
                 document.getElementById('id-letras').innerText = letrasAleatorias;
-                
-                // Quitamos el scroll del fondo y mostramos el modal
                 document.body.style.overflow = 'hidden';
                 document.getElementById('modal-identificador').classList.remove('hidden');
 
             } catch (err) {
-                console.error("Error General:", err);
-                alert("❌ Fallo de conexión. Comprueba tu internet.");
-                btn.innerHTML = 'Confirmar Reserva';
-                btn.disabled = false;
+                alert("❌ Fallo de conexión."); btn.innerHTML = 'Confirmar Reserva'; btn.disabled = false;
+            }
+        }
+
+        // 5. BUSCAR RESERVA EN SUPABASE
+        async function buscarReserva() {
+            const inputVal = document.getElementById('mod-identificador').value.trim().toUpperCase();
+            if(!inputVal) return alert("⚠️ Introduce tu identificador.");
+            
+            const btn = document.getElementById('btn-buscar');
+            btn.innerHTML = 'Buscando...'; btn.disabled = true;
+
+            try {
+                // Descargamos reservas y mesas
+                const { data: reservas } = await supabase.from('reservas').select('*');
+                const { data: mesas } = await supabase.from('mesas').select('id, zona');
+
+                // Buscamos coincidencia juntando los 3 datos
+                const reservaEncontrada = (reservas || []).find(r => {
+                    const n = r.nombre_cliente.replace(/\s+/g, '').toUpperCase();
+                    const idGenerado = `${n}${r.telefono_cliente}${r.codigo_secreto}`;
+                    return idGenerado === inputVal;
+                });
+
+                if(!reservaEncontrada) {
+                    alert("❌ No se encontró ninguna reserva. Revisa que esté escrito exactamente igual.");
+                    btn.innerHTML = 'Buscar mi reserva'; btn.disabled = false;
+                    return;
+                }
+
+                // Si la encuentra, sacamos su zona y mostramos panel de control
+                miReservaActual = reservaEncontrada;
+                const mesaAsignada = mesas.find(m => m.id === miReservaActual.mesa_id);
+                miZonaActual = mesaAsignada ? mesaAsignada.zona : 'Sin Zona';
+
+                document.getElementById('gest-nombre').innerText = miReservaActual.nombre_cliente;
+                document.getElementById('gest-zona').innerText = miZonaActual;
+                
+                document.getElementById('vista-modificar').classList.add('hidden');
+                document.getElementById('vista-gestion').classList.remove('hidden');
+                
+                // Ponemos su fecha actual en los selectores
+                document.getElementById('gest-fecha').value = miReservaActual.fecha;
+                actualizarHoras('gest-fecha', 'gest-hora');
+                // Intentamos seleccionar su hora
+                setTimeout(() => { document.getElementById('gest-hora').value = miReservaActual.hora_inicio.substring(0,5); }, 100);
+
+            } catch (error) {
+                alert("❌ Fallo de red al buscar.");
+            }
+            btn.innerHTML = 'Buscar mi reserva'; btn.disabled = false;
+        }
+
+        // 6. ACTUALIZAR RESERVA
+        async function actualizarReserva() {
+            const nuevaFecha = document.getElementById('gest-fecha').value;
+            const nuevaHora = document.getElementById('gest-hora').value;
+            if(!nuevaFecha || !nuevaHora) return;
+
+            const btn = document.getElementById('btn-actualizar');
+            btn.innerHTML = 'Guardando...'; btn.disabled = true;
+
+            try {
+                const { data: mesasZona } = await supabase.from('mesas').select('id').eq('zona', miZonaActual);
+                const { data: reservasDia } = await supabase.from('reservas').select('id, mesa_id, hora_inicio').eq('fecha', nuevaFecha);
+                
+                const horaSol = new Date(`${nuevaFecha}T${nuevaHora}:00`);
+                
+                // Buscamos mesa, EXCLUYENDO la reserva actual para no chocar con nosotros mismos
+                let nuevaMesa = mesasZona.find(m => {
+                    const reservasMesa = (reservasDia || []).filter(r => r.mesa_id === m.id && r.id !== miReservaActual.id);
+                    return !reservasMesa.some(r => Math.abs((horaSol - new Date(`${nuevaFecha}T${r.hora_inicio}`)) / 60000) < 150);
+                });
+
+                if(!nuevaMesa) {
+                    alert(`❌ Lo sentimos, no hay mesas libres en ${miZonaActual} para esa nueva hora.`);
+                    btn.innerHTML = 'Guardar Cambios'; btn.disabled = false; return;
+                }
+
+                // Guardamos cambios
+                await supabase.from('reservas').update({ fecha: nuevaFecha, hora_inicio: nuevaHora + ':00', mesa_id: nuevaMesa.id }).eq('id', miReservaActual.id);
+
+                // Avisar Telegram
+                const msg = `✏️ *RESERVA MODIFICADA* ✏️\n👤 ${miReservaActual.nombre_cliente}\n🔄 *NUEVA FECHA:* ${nuevaFecha} a las ${nuevaHora}`;
+                fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: msg, parse_mode: 'Markdown' }) });
+
+                alert("✅ Tu reserva se ha actualizado correctamente.");
+                window.location.reload();
+            } catch (e) {
+                alert("❌ Fallo al actualizar."); btn.innerHTML = 'Guardar Cambios'; btn.disabled = false;
+            }
+        }
+
+        // 7. CANCELAR RESERVA
+        async function cancelarReserva() {
+            if(!confirm("⚠️ ¿Estás seguro de que quieres cancelar tu reserva de forma permanente?")) return;
+
+            const btn = document.getElementById('btn-cancelar');
+            btn.innerHTML = 'Cancelando...'; btn.disabled = true;
+
+            try {
+                await supabase.from('reservas').delete().eq('id', miReservaActual.id);
+                
+                // Avisar Telegram
+                const msg = `❌ *RESERVA CANCELADA* ❌\n👤 ${miReservaActual.nombre_cliente}\n📞 ${miReservaActual.telefono_cliente}\n📅 Iba a ser el ${miReservaActual.fecha}`;
+                fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: msg, parse_mode: 'Markdown' }) });
+
+                alert("🗑️ Tu reserva ha sido cancelada.");
+                window.location.reload();
+            } catch (e) {
+                alert("❌ Error al cancelar."); btn.innerHTML = '❌ Cancelar Reserva'; btn.disabled = false;
             }
         }
     </script>
