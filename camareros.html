@@ -13,12 +13,11 @@
         <h1 class="text-2xl font-black uppercase text-yellow-400">Control Aforo</h1>
         <div class="text-right">
             <span id="reloj" class="text-white font-bold text-lg block">00:00</span>
-            <span id="estado-conexion" class="text-yellow-400 font-bold text-xs">● Conectando...</span>
+            <span id="estado-conexion" class="text-yellow-400 font-bold text-xs">● Iniciando...</span>
         </div>
     </header>
 
     <main class="p-4 max-w-4xl mx-auto space-y-8 mt-4">
-        
         <!-- TARJETA INTERIOR -->
         <div class="bg-gray-800 p-6 rounded-3xl border-4 border-gray-700 text-center shadow-2xl">
             <h2 class="text-4xl font-black text-blue-400 uppercase mb-2">Interior</h2>
@@ -56,54 +55,52 @@
                 </button>
             </div>
         </div>
-
     </main>
 
     <script>
-        const SUPABASE_URL = 'https://ncxrtpmndkmgegtkasub.supabase.co'; 
-        const SUPABASE_ANON_KEY = 'sb_publishable_05L29aUddOhhWdeH7qZiqg_3Xq_EKjC';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        let mesasCache = [];
-        let reservasHoyCache = [];
-
         // RELOJ EN TIEMPO REAL
         setInterval(() => {
             const d = new Date();
             document.getElementById('reloj').innerText = d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
         }, 1000);
 
-        // 1. CARGAR DATOS (Se trae las mesas y las reservas de hoy)
-        async function cargarDatos() {
-            try {
-                document.getElementById('estado-conexion').innerHTML = '● Actualizando...';
-                document.getElementById('estado-conexion').className = 'text-yellow-400 font-bold text-xs';
+        const SUPABASE_URL = 'https://ncxrtpmndkmgegtkasub.supabase.co'; 
+        const SUPABASE_ANON_KEY = 'sb_publishable_05L29aUddOhhWdeH7qZiqg_3Xq_EKjC';
+        let supabase = null;
+        
+        let mesasCache = [];
+        let reservasHoyCache = [];
 
-                // Sacamos la fecha de hoy
+        async function cargarDatos() {
+            if(!supabase) return;
+            const estado = document.getElementById('estado-conexion');
+            try {
+                estado.innerHTML = '● Actualizando...';
+                estado.className = 'text-yellow-400 font-bold text-xs';
+
                 const ahora = new Date();
                 const hoyIso = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
 
-                // Pedimos a Supabase
-                const [respMesas, respReservas] = await Promise.all([
-                    supabase.from('mesas').select('*'),
-                    supabase.from('reservas').select('mesa_id, hora_inicio').eq('fecha', hoyIso)
-                ]);
+                const { data: respMesas, error: errMesas } = await supabase.from('mesas').select('*');
+                if (errMesas) throw errMesas;
 
-                mesasCache = respMesas.data || [];
-                reservasHoyCache = respReservas.data || [];
+                const { data: respReservas, error: errRes } = await supabase.from('reservas').select('mesa_id, hora_inicio').eq('fecha', hoyIso);
+                if (errRes) throw errRes;
+
+                mesasCache = respMesas || [];
+                reservasHoyCache = respReservas || [];
 
                 actualizarPantalla(ahora, hoyIso);
 
-                document.getElementById('estado-conexion').innerHTML = '● Sincronizado';
-                document.getElementById('estado-conexion').className = 'text-green-400 font-bold text-xs';
+                estado.innerHTML = '● Conectado';
+                estado.className = 'text-green-400 font-bold text-xs';
             } catch (error) {
                 console.error(error);
-                document.getElementById('estado-conexion').innerHTML = '● Error Red';
-                document.getElementById('estado-conexion').className = 'text-red-500 font-bold text-xs';
+                estado.innerHTML = '● Error Red';
+                estado.className = 'text-red-500 font-bold text-xs';
             }
         }
 
-        // 2. CALCULAR Y PINTAR MESAS LIBRES
         function actualizarPantalla(ahora, hoyIso) {
             let libresInt = 0; let totalInt = 0;
             let libresTer = 0; let totalTer = 0;
@@ -112,17 +109,13 @@
                 if(mesa.zona === 'Interior') totalInt++;
                 if(mesa.zona === 'Terraza') totalTer++;
 
-                // ¿Está libre físicamente en el local?
                 let estaLibreFisicamente = (mesa.estado_actual === 'libre');
-
-                // ¿Tiene reserva de internet para AHORA MISMO? (Menos de 150 mins de diferencia)
                 let reservasDeEstaMesa = reservasHoyCache.filter(r => r.mesa_id === mesa.id);
                 let estaReservadaAhora = reservasDeEstaMesa.some(r => {
                     let horaReserva = new Date(`${hoyIso}T${r.hora_inicio}`);
                     return Math.abs((ahora - horaReserva) / 60000) < 150;
                 });
 
-                // Si está libre físicamente Y nadie la ha reservado para ahora, suma 1 a disponibles
                 if(estaLibreFisicamente && !estaReservadaAhora) {
                     if(mesa.zona === 'Interior') libresInt++;
                     if(mesa.zona === 'Terraza') libresTer++;
@@ -133,63 +126,53 @@
             document.getElementById('contador-terraza').innerHTML = `<span class="${libresTer===0 ? 'text-red-500' : 'text-white'}">${libresTer}</span> <span class="text-3xl text-gray-500">/ ${totalTer}</span>`;
         }
 
-        // 3. CAMARERO SIENTA A ALGUIEN DE LA CALLE
         async function ocuparMesa(zona) {
+            if(!supabase) return alert("❌ Sin conexión a la Base de Datos.");
             const ahora = new Date();
             const hoyIso = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
 
-            // Buscamos una mesa de esa zona que esté 'libre' Y que no esté reservada para ahora
             const mesaParaOcupar = mesasCache.find(mesa => {
                 if (mesa.zona !== zona || mesa.estado_actual !== 'libre') return false;
-                
                 let reservasMesa = reservasHoyCache.filter(r => r.mesa_id === mesa.id);
                 let chocan = reservasMesa.some(r => Math.abs((ahora - new Date(`${hoyIso}T${r.hora_inicio}`)) / 60000) < 150);
-                
-                return !chocan; // Si no choca con ninguna reserva, nos sirve
+                return !chocan; 
             });
 
-            if(!mesaParaOcupar) {
-                return alert(`⚠️ ¡No quedan mesas en ${zona}! Las que quedan están esperando reservas de internet.`);
-            }
+            if(!mesaParaOcupar) return alert(`⚠️ ¡No quedan mesas en ${zona}! Las libres están esperando una reserva inminente.`);
 
             try {
-                // Actualizamos Supabase para decir que está ocupada por un cliente físico
                 await supabase.from('mesas').update({ estado_actual: 'ocupada' }).eq('id', mesaParaOcupar.id);
-                cargarDatos(); // Recargamos para actualizar los números
-            } catch (err) {
-                alert("❌ Error de conexión al ocupar la mesa.");
-            }
+                cargarDatos();
+            } catch (err) { alert("❌ Error al ocupar."); }
         }
 
-        // 4. CAMARERO LIMPIA LA MESA CUANDO SE VAN
         async function liberarMesa(zona) {
-            // Buscamos cualquier mesa de esa zona que esté ocupada físicamente
+            if(!supabase) return alert("❌ Sin conexión a la Base de Datos.");
             const mesaParaLiberar = mesasCache.find(mesa => mesa.zona === zona && mesa.estado_actual === 'ocupada');
-
-            if(!mesaParaLiberar) {
-                return alert(`⚠️ No hay ninguna mesa ocupada físicamente en ${zona} ahora mismo.`);
-            }
+            if(!mesaParaLiberar) return alert(`⚠️ No hay mesas ocupadas físicamente en ${zona}.`);
 
             try {
-                // Actualizamos Supabase para decir que vuelve a estar libre
                 await supabase.from('mesas').update({ estado_actual: 'libre' }).eq('id', mesaParaLiberar.id);
                 cargarDatos();
-            } catch (err) {
-                alert("❌ Error de conexión al liberar la mesa.");
-            }
+            } catch (err) { alert("❌ Error al liberar."); }
         }
 
-        // 5. ESCUCHAR CAMBIOS EN TIEMPO REAL (Refresco automático)
-        // Si entra una reserva de internet o si otro camarero pulsa el botón en su móvil, esto se actualiza solo.
-        supabase.channel('pantalla-camareros')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas' }, payload => { cargarDatos(); })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'reservas' }, payload => { cargarDatos(); })
-            .subscribe();
-
-        // Arrancar la app y actualizar el contador cada minuto por si entramos en la hora de una reserva
-        cargarDatos();
-        setInterval(cargarDatos, 60000); 
-
+        // ESPERAMOS A QUE CARGUE LA PÁGINA PARA CONECTAR (Evita el cuelgue)
+        window.onload = () => {
+            if (window.supabase) {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                cargarDatos();
+                setInterval(cargarDatos, 30000);  // Actualiza solo cada 30 seg
+                
+                supabase.channel('camareros-vivo')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas' }, payload => { cargarDatos(); })
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'reservas' }, payload => { cargarDatos(); })
+                    .subscribe();
+            } else {
+                document.getElementById('estado-conexion').innerHTML = '● Error Librería';
+                document.getElementById('estado-conexion').className = 'text-red-500 font-bold text-xs';
+            }
+        };
     </script>
 </body>
 </html>
