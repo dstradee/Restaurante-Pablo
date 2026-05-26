@@ -4,9 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reserva - Restaurante de Pablo</title>
-    <!-- Tailwind CSS (Para los estilos) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Librería de Supabase (Para conectar con la Base de Datos) -->
+    <!-- Librería oficial de Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-100">
@@ -28,7 +27,6 @@
                     </div>
                     <div>
                         <label class="block mb-1">Hora</label>
-                        <!-- El select cargará de forma instantánea -->
                         <select id="input-hora" class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]"></select>
                     </div>
                 </div>
@@ -58,7 +56,26 @@
     </main>
 
     <script>
-        // ¡OJO! Asegúrate de que esta Anon Key es la correcta. Normalmente empieza por "eyJ..."
+        // 1. GENERAR HORAS: De 08:00 a 23:00 cada 15 minutos
+        function inicializarFormulario() {
+            const selectHora = document.getElementById('input-hora');
+            let opcionesHTML = "";
+            for(let h = 8; h <= 23; h++) {
+                let horaStr = h.toString().padStart(2, '0');
+                if(h === 23) {
+                    opcionesHTML += `<option value="23:00">23:00</option>`; // La última
+                } else {
+                    ['00','15','30','45'].forEach(m => {
+                        opcionesHTML += `<option value="${horaStr}:${m}">${horaStr}:${m}</option>`;
+                    });
+                }
+            }
+            selectHora.innerHTML = opcionesHTML;
+            document.getElementById('input-fecha').valueAsDate = new Date();
+        }
+        inicializarFormulario(); // Se ejecuta nada más abrir la web
+
+        // 2. CONEXIÓN A SUPABASE (Solo usamos la Publishable)
         const SUPABASE_URL = 'https://ncxrtpmndkmgegtkasub.supabase.co'; 
         const SUPABASE_ANON_KEY = 'sb_publishable_05L29aUddOhhWdeH7qZiqg_3Xq_EKjC';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -66,19 +83,7 @@
         const TELEGRAM_BOT_TOKEN = '8789184996:AAFV2JsCWBcXo-IhC0YYzQuEhuhWPUgHK6k';
         const TELEGRAM_CHAT_ID = '6519651464';
 
-        // 1. GENERAR HORAS (Instantáneo)
-        function inicializarFormulario() {
-            const selectHora = document.getElementById('input-hora');
-            let opcionesHTML = "";
-            for(let h=13; h<=15; h++) ['00','15','30','45'].forEach(m => opcionesHTML += `<option value="${h}:${m}">${h}:${m}</option>`);
-            for(let h=20; h<=23; h++) ['00','15','30','45'].forEach(m => opcionesHTML += `<option value="${h}:${m}">${h}:${m}</option>`);
-            selectHora.innerHTML = opcionesHTML;
-            document.getElementById('input-fecha').valueAsDate = new Date();
-        }
-        
-        // Ejecutamos al cargar
-        inicializarFormulario();
-
+        // 3. LÓGICA DE LA RESERVA
         async function procesarReserva() {
             const fecha = document.getElementById('input-fecha').value;
             const hora = document.getElementById('input-hora').value;
@@ -86,74 +91,80 @@
             const nombre = document.getElementById('input-nombre').value;
             const telefono = document.getElementById('input-telefono').value;
 
-            if(!fecha || !hora || !nombre || !telefono) return alert("⚠️ Rellena todos los campos.");
+            if(!fecha || !hora || !nombre || !telefono) {
+                return alert("⚠️ Rellena todos los campos, por favor.");
+            }
 
             const btn = document.getElementById('btn-reservar');
             btn.innerHTML = 'Procesando...';
             btn.disabled = true;
 
             try {
-                // Sacamos el restaurante
-                const { data: rest, error: errorRest } = await supabase.from('restaurantes').select('id').limit(1).single();
-                if (errorRest) throw errorRest;
-                
-                // Buscamos las mesas de esa zona
-                const { data: mesasZona } = await supabase.from('mesas').select('*').eq('zona', zona);
-                
-                // Buscamos las reservas de ese día
-                const { data: reservasDia } = await supabase.from('reservas').select('mesa_id, hora_inicio').eq('fecha', fecha);
-                
-                // Filtramos mesas que chocan en tiempo (Diferencia de menos de 150 minutos)
-                const horaSolicitadaDate = new Date(`${fecha}T${hora}:00`);
-                const idsMesasOcupadas = (reservasDia || []).filter(res => {
-                    const horaReservaPrevia = new Date(`${fecha}T${res.hora_inicio}`);
-                    const diferenciaMinutos = Math.abs((horaSolicitadaDate - horaReservaPrevia) / 60000);
-                    return diferenciaMinutos < 150; // 2.5 horas = 150 mins
-                }).map(r => r.mesa_id);
+                // Paso A: Buscar todas las mesas de la zona elegida (20 mesas)
+                const { data: mesasZona, error: errMesas } = await supabase.from('mesas').select('*').eq('zona', zona);
+                if (errMesas) throw errMesas;
 
-                // Elegimos una mesa libre que no esté en idsMesasOcupadas
-                const mesaLibre = mesasZona.find(m => !idsMesasOcupadas.includes(m.id));
+                // Paso B: Buscar las reservas de ese día en concreto
+                const { data: reservasDia, error: errRes } = await supabase.from('reservas').select('*').eq('fecha', fecha);
+                if (errRes) throw errRes;
 
-                if(!mesaLibre) {
-                    alert(`❌ Lo sentimos, no quedan mesas libres en ${zona} a esa hora.`);
+                const horaSolicitada = new Date(`${fecha}T${hora}:00`);
+
+                // Paso C: Encontrar una mesa que esté libre (comprobamos el margen de 2.5h / 150 min)
+                let mesaAsignada = null;
+
+                for (let mesa of mesasZona) {
+                    // Sacamos las reservas que tiene ESTA mesa en concreto hoy
+                    const reservasDeEstaMesa = reservasDia.filter(r => r.mesa_id === mesa.id);
+                    
+                    // Comprobamos si tiene choques de horario
+                    const tieneChoque = reservasDeEstaMesa.some(r => {
+                        const horaReservaExitente = new Date(`${fecha}T${r.hora_inicio}`);
+                        const diferenciaMinutos = Math.abs((horaSolicitada - horaReservaExitente) / 60000);
+                        return diferenciaMinutos < 150; // Si hay menos de 150 mins de diferencia, CHOCAN
+                    });
+
+                    // Si no tiene choque con ninguna reserva previa, nos la quedamos y paramos de buscar
+                    if (!tieneChoque) {
+                        mesaAsignada = mesa;
+                        break;
+                    }
+                }
+
+                // Si hemos revisado las 20 mesas y ninguna está libre:
+                if(!mesaAsignada) {
+                    alert(`❌ Lo sentimos, no quedan mesas libres en ${zona} a esa hora (tenemos en cuenta que la comida dura 2h y 30m).`);
                     btn.innerHTML = 'Confirmar Reserva';
                     btn.disabled = false;
                     return;
                 }
 
-                // Guardamos la reserva
-                await supabase.from('reservas').insert([{
-                    restaurante_id: rest.id, 
-                    mesa_id: mesaLibre.id, 
+                // Paso D: Guardamos la reserva en Supabase usando la mesa libre que encontramos
+                const { error: insertError } = await supabase.from('reservas').insert([{
+                    mesa_id: mesaAsignada.id, 
                     nombre_cliente: nombre,
                     telefono_cliente: telefono, 
                     fecha: fecha, 
-                    hora_inicio: hora + ':00', 
-                    estado: 'pendiente'
+                    hora_inicio: hora + ':00'
                 }]);
 
-                // Bloqueamos la mesa para que el camarero la vea ocupada (Si la reserva es inminente de hoy)
-                const ahora = new Date();
-                if(fecha === ahora.toISOString().split('T')[0]) {
-                    const difActual = (horaSolicitadaDate - ahora) / 60000;
-                    if(difActual > -150 && difActual <= 150) {
-                        await supabase.from('mesas').update({ estado_actual: 'ocupada' }).eq('id', mesaLibre.id);
-                    }
-                }
+                if (insertError) throw insertError;
 
-                // Telegram
-                const msg = `🍔 *RESERVA CONFIRMADA* 🍔\n👤 *Nombre:* ${nombre}\n📞 *Tlf:* ${telefono}\n📅 *Día:* ${fecha}\n⏰ *Hora:* ${hora}\n📍 *ZONA:* ${zona}`;
+                // Paso E: Mandar el mensaje por Telegram
+                const msg = `🍔 *NUEVA RESERVA* 🍔\n👤 *Nombre:* ${nombre}\n📞 *Tlf:* ${telefono}\n📅 *Día:* ${fecha}\n⏰ *Hora:* ${hora}\n📍 *Zona:* ${zona}`;
                 fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: msg, parse_mode: 'Markdown' })
                 });
 
+                // Confirmación visual al cliente
                 alert(`✅ ¡Reserva en ${zona} confirmada con éxito!`);
                 window.location.reload(); 
 
             } catch (err) {
-                console.error("Error completo:", err);
-                alert("❌ Error al conectar. Revisa la consola.");
+                console.error("Error al hacer la reserva:", err);
+                alert("❌ Fallo de conexión con la base de datos.");
                 btn.innerHTML = 'Confirmar Reserva';
                 btn.disabled = false;
             }
