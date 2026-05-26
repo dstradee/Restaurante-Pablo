@@ -3,29 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camareros - Restaurante de Pablo</title>
+    <title>Camareros</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-900 text-white min-h-screen font-sans select-none pb-10">
+<body class="bg-gray-900 text-white min-h-screen font-sans select-none">
 
-    <header class="bg-black py-4 px-6 flex justify-between items-center border-b-2 border-gray-700 sticky top-0 z-50">
-        <h1 class="text-2xl font-black uppercase text-yellow-400">Terminal Camareros</h1>
-        <span class="text-green-400 font-bold text-sm flex items-center gap-2">
-            <span class="w-3 h-3 bg-green-500 rounded-full animate-ping inline-block"></span> En Vivo
-        </span>
+    <header class="bg-black py-4 px-6 flex justify-between items-center border-b-2 border-gray-700">
+        <h1 class="text-2xl font-black uppercase text-yellow-400">Control de Aforo</h1>
+        <span class="text-green-400 font-bold text-sm">● Vivo</span>
     </header>
 
-    <main class="p-4 max-w-6xl mx-auto">
-        <!-- ZONAS -->
-        <h2 class="text-xl font-bold uppercase mb-2 text-blue-300 mt-4">Interior (1-20)</h2>
-        <div id="grid-interior" class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-10 gap-2 mb-6"></div>
+    <main class="p-4 max-w-4xl mx-auto space-y-6 mt-4">
+        
+        <!-- TARJETA INTERIOR -->
+        <div class="bg-gray-800 p-6 rounded-2xl border-4 border-gray-700 text-center">
+            <h2 class="text-3xl font-black text-blue-400 uppercase mb-2">Salón Interior</h2>
+            <div class="text-6xl font-black mb-6" id="contador-interior">Cargando...</div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="ocuparMesa('Interior')" class="bg-red-600 hover:bg-red-700 text-white text-xl font-bold py-4 rounded-xl shadow-lg active:scale-95">
+                    + Sentar Cliente
+                </button>
+                <button onclick="liberarMesa('Interior')" class="bg-green-600 hover:bg-green-700 text-white text-xl font-bold py-4 rounded-xl shadow-lg active:scale-95">
+                    - Liberar Mesa
+                </button>
+            </div>
+        </div>
 
-        <h2 class="text-xl font-bold uppercase mb-2 text-orange-300">Terraza (21-30)</h2>
-        <div id="grid-terraza" class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-10 gap-2 mb-6"></div>
+        <!-- TARJETA TERRAZA -->
+        <div class="bg-gray-800 p-6 rounded-2xl border-4 border-gray-700 text-center">
+            <h2 class="text-3xl font-black text-orange-400 uppercase mb-2">Terraza</h2>
+            <div class="text-6xl font-black mb-6" id="contador-terraza">Cargando...</div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="ocuparMesa('Terraza')" class="bg-red-600 hover:bg-red-700 text-white text-xl font-bold py-4 rounded-xl shadow-lg active:scale-95">
+                    + Sentar Cliente
+                </button>
+                <button onclick="liberarMesa('Terraza')" class="bg-green-600 hover:bg-green-700 text-white text-xl font-bold py-4 rounded-xl shadow-lg active:scale-95">
+                    - Liberar Mesa
+                </button>
+            </div>
+        </div>
 
-        <h2 class="text-xl font-bold uppercase mb-2 text-purple-300">Segunda Planta (31-40)</h2>
-        <div id="grid-planta-alta" class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-10 gap-2 mb-6"></div>
     </main>
 
     <script>
@@ -34,114 +54,74 @@
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let mesas = [];
-        let reservasDeHoy = [];
 
         async function cargarDatos() {
-            // 1. Cargar Mesas
-            const { data: dataMesas } = await supabase.from('mesas').select('*').order('numero_mesa', { ascending: true });
-            mesas = dataMesas || [];
-
-            // 2. Cargar Reservas de HOY que no estén canceladas
-            const hoy = new Date().toISOString().split('T')[0];
-            const { data: dataReservas } = await supabase.from('reservas').select('*').eq('fecha', hoy).eq('estado', 'pendiente');
-            reservasDeHoy = dataReservas || [];
-
-            pintarMesas();
-            comprobarCaducadas(); // Revisar si hay alguna que desbloquear automáticamente
+            const { data } = await supabase.from('mesas').select('*');
+            mesas = data || [];
+            actualizarContadores();
         }
 
-        function pintarMesas() {
-            ['interior', 'terraza', 'planta-alta'].forEach(id => document.getElementById(`grid-${id}`).innerHTML = '');
-
-            mesas.forEach(mesa => {
-                const btn = document.createElement('button');
-                btn.className = `h-20 w-full rounded-lg font-black border-2 shadow flex flex-col items-center justify-center transition active:scale-95`;
-                
-                // Buscar si tiene una reserva hoy próxima
-                const reservaMesa = reservasDeHoy.find(r => r.mesa_id === mesa.id);
-                let horaReservaHtml = '';
-
-                if (mesa.estado_actual === 'libre') {
-                    btn.classList.add('bg-green-600', 'border-green-800', 'text-white');
-                    // Si está libre pero tiene reserva más tarde, lo avisamos
-                    if(reservaMesa) horaReservaHtml = `<span class="text-[10px] bg-black px-1 rounded mt-1">Res: ${reservaMesa.hora_inicio.substring(0,5)}</span>`;
-                } else if (mesa.estado_actual === 'ocupada') {
-                    btn.classList.add('bg-red-600', 'border-red-900', 'text-white');
-                } else if (mesa.estado_actual === 'reservada') {
-                    btn.classList.add('bg-yellow-400', 'border-yellow-600', 'text-black');
-                    if(reservaMesa) horaReservaHtml = `<span class="text-[10px] bg-black text-white px-1 rounded mt-1">Llegan: ${reservaMesa.hora_inicio.substring(0,5)}</span>`;
-                }
-
-                btn.innerHTML = `<span class="text-2xl">${mesa.numero_mesa}</span> ${horaReservaHtml}`;
-                btn.onclick = () => accionarMesa(mesa, reservaMesa);
-
-                if(mesa.zona === 'Interior') document.getElementById('grid-interior').appendChild(btn);
-                if(mesa.zona === 'Terraza') document.getElementById('grid-terraza').appendChild(btn);
-                if(mesa.zona === 'Segunda Planta') document.getElementById('grid-planta-alta').appendChild(btn);
-            });
-        }
-
-        async function accionarMesa(mesa, reserva) {
-            let nuevoEstado = null;
-
-            if (mesa.estado_actual === 'libre') {
-                if(confirm(`Mesa ${mesa.numero_mesa}: ¿Sentar a alguien de paso? (Pasa a OCUPADA)`)) nuevoEstado = 'ocupada';
-            } 
-            else if (mesa.estado_actual === 'ocupada') {
-                if(confirm(`Mesa ${mesa.numero_mesa}: ¿Han pagado y se han ido? (Pasa a LIBRE)`)) nuevoEstado = 'libre';
-            } 
-            else if (mesa.estado_actual === 'reservada') {
-                const mensaje = reserva ? `Mesa ${mesa.numero_mesa} reservada a las ${reserva.hora_inicio.substring(0,5)}.\n\n¿Han llegado los clientes?` : `Mesa ${mesa.numero_mesa}: ¿Han llegado los clientes?`;
-                if(confirm(mensaje)) {
-                    nuevoEstado = 'ocupada';
-                    if(reserva) await supabase.from('reservas').update({ estado: 'asistida' }).eq('id', reserva.id);
-                } else {
-                    if(confirm(`¿Quieres marcar la Mesa ${mesa.numero_mesa} como libre? (El cliente no vino)`)) {
-                        nuevoEstado = 'libre';
-                        if(reserva) await supabase.from('reservas').update({ estado: 'no_presentado' }).eq('id', reserva.id);
-                    }
-                }
-            }
-
-            if (nuevoEstado) {
-                await supabase.from('mesas').update({ estado_actual: nuevoEstado }).eq('id', mesa.id);
-                cargarDatos(); // Recargar todo tras el cambio
-            }
-        }
-
-        // ==========================================
-        // AUTO-DESBLOQUEO DE MESAS (Se ejecuta cada minuto)
-        // ==========================================
-        async function comprobarCaducadas() {
-            const ahora = new Date();
+        function actualizarContadores() {
+            const interiorLibres = mesas.filter(m => m.zona === 'Interior' && m.estado_actual === 'libre').length;
+            const interiorTotal = mesas.filter(m => m.zona === 'Interior').length;
             
-            for (let reserva of reservasDeHoy) {
-                // Sacar la hora de la reserva y sumarle 1 hora (60 mins)
-                const horaReservaDate = new Date(`${reserva.fecha}T${reserva.hora_inicio}`);
-                const horaCaducidad = new Date(horaReservaDate.getTime() + (60 * 60000)); // +1 hora
+            const terrazaLibres = mesas.filter(m => m.zona === 'Terraza' && m.estado_actual === 'libre').length;
+            const terrazaTotal = mesas.filter(m => m.zona === 'Terraza').length;
 
-                if (ahora >= horaCaducidad) {
-                    // Ha pasado 1 hora. Comprobamos si la mesa sigue en estado 'reservada'
+            document.getElementById('contador-interior').innerHTML = `<span class="text-white">${interiorLibres}</span> <span class="text-2xl text-gray-400">/ ${interiorTotal} libres</span>`;
+            document.getElementById('contador-terraza').innerHTML = `<span class="text-white">${terrazaLibres}</span> <span class="text-2xl text-gray-400">/ ${terrazaTotal} libres</span>`;
+        }
+
+        // El camarero sienta a alguien (coge 1 mesa libre y la ocupa)
+        async function ocuparMesa(zona) {
+            const mesaLibre = mesas.find(m => m.zona === zona && m.estado_actual === 'libre');
+            if(!mesaLibre) return alert(`No quedan mesas libres en ${zona}!`);
+            
+            await supabase.from('mesas').update({ estado_actual: 'ocupada' }).eq('id', mesaLibre.id);
+            cargarDatos();
+        }
+
+        // El camarero limpia una mesa (coge 1 mesa ocupada o reservada y la libera)
+        async function liberarMesa(zona) {
+            const mesaOcupada = mesas.find(m => m.zona === zona && m.estado_actual !== 'libre');
+            if(!mesaOcupada) return alert(`Todas las mesas de ${zona} ya están libres!`);
+
+            await supabase.from('mesas').update({ estado_actual: 'libre' }).eq('id', mesaOcupada.id);
+            cargarDatos();
+        }
+
+        // ==========================================
+        // AUTO-DESBLOQUEO CADA 2.5H (150 mins)
+        // ==========================================
+        async function liberarMesasCaducadas() {
+            const ahora = new Date();
+            const hoy = ahora.toISOString().split('T')[0];
+            
+            const { data: reservasHoy } = await supabase.from('reservas').select('*').eq('fecha', hoy);
+            if(!reservasHoy) return;
+
+            for (let reserva of reservasHoy) {
+                const horaReservaDate = new Date(`${reserva.fecha}T${reserva.hora_inicio}`);
+                const horaFin = new Date(horaReservaDate.getTime() + (150 * 60000)); // +2.5 horas
+
+                if (ahora >= horaFin) {
                     const mesaAfectada = mesas.find(m => m.id === reserva.mesa_id);
-                    if (mesaAfectada && mesaAfectada.estado_actual === 'reservada') {
-                        console.log(`Auto-desbloqueando Mesa ${mesaAfectada.numero_mesa}... Ha pasado 1 hora.`);
-                        // Liberar mesa
+                    if (mesaAfectada && mesaAfectada.estado_actual !== 'libre') {
+                        // Liberamos la mesa porque ya han pasado 2.5h
                         await supabase.from('mesas').update({ estado_actual: 'libre' }).eq('id', mesaAfectada.id);
-                        // Marcar reserva como no presentado
-                        await supabase.from('reservas').update({ estado: 'no_presentado' }).eq('id', reserva.id);
+                        await supabase.from('reservas').update({ estado: 'asistida' }).eq('id', reserva.id);
+                        cargarDatos();
                     }
                 }
             }
         }
-        setInterval(comprobarCaducadas, 60000); // 60.000 ms = 1 minuto
+        setInterval(liberarMesasCaducadas, 60000); // Comprueba el reloj cada 1 minuto
 
-        // TIEMPO REAL: Si pasa algo en la web, recargamos la app del camarero
+        // Realtime
         supabase.channel('camareros-vivo')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas' }, () => cargarDatos())
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'reservas' }, () => cargarDatos())
           .subscribe();
 
-        // Arranque Inicial
         cargarDatos();
     </script>
 </body>
