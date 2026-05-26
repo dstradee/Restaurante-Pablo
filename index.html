@@ -6,35 +6,27 @@
     <title>Reservas - Restaurante de Pablo</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-        tailwind.config = { theme: { extend: { colors: { 'pablo-red': '#E60000', 'pablo-yellow': '#FFF9E6', 'pablo-white': '#FFFFFF' } } } }
-    </script>
 </head>
-<body class="bg-pablo-yellow min-h-screen pb-10 text-gray-900 font-sans">
+<body class="bg-[#FFF9E6] min-h-screen pb-10 text-gray-900 font-sans">
 
-    <header class="bg-pablo-red text-pablo-white py-6 text-center border-b-8 border-black">
+    <header class="bg-[#E60000] text-white py-6 text-center border-b-8 border-black">
         <h1 class="text-5xl font-black uppercase italic tracking-wider">Restaurante de Pablo</h1>
         <p class="mt-2 font-bold uppercase">Reserva tu mesa al instante</p>
     </header>
 
     <main class="max-w-xl mx-auto mt-8 px-4">
         <div class="bg-white p-6 md:p-8 rounded-xl border-4 border-black" style="box-shadow: 6px 6px 0px #E60000;">
-            <h2 class="text-3xl font-black uppercase mb-6 text-pablo-red border-b-4 border-black pb-2 text-center">Datos de la Reserva</h2>
+            <h2 class="text-3xl font-black uppercase mb-6 text-[#E60000] border-b-4 border-black pb-2 text-center">Tu Reserva</h2>
             <div class="space-y-4 font-bold">
                 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block mb-1">Día</label>
-                        <input type="date" id="input-fecha" class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-pablo-red">
+                        <input type="date" id="input-fecha" class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]">
                     </div>
                     <div>
-                        <label class="block mb-1">Hora</label>
-                        <select id="input-hora" class="w-full border-2 border-black p-3 rounded">
-                            <option value="13:30">13:30</option>
-                            <option value="14:00">14:00</option>
-                            <option value="21:00">21:00</option>
-                            <option value="21:30">21:30</option>
-                        </select>
+                        <label class="block mb-1">Hora (Cada 15m)</label>
+                        <select id="input-hora" class="w-full border-2 border-black p-3 rounded"></select>
                     </div>
                 </div>
 
@@ -56,7 +48,7 @@
                     <input type="tel" id="input-telefono" placeholder="Ej: 600123456" class="w-full border-2 border-black p-3 rounded">
                 </div>
 
-                <button onclick="procesarReserva()" id="btn-reservar" class="mt-8 w-full bg-black text-white font-black text-2xl py-4 rounded border-2 border-black uppercase transition transform active:translate-y-1">
+                <button onclick="procesarReserva()" id="btn-reservar" class="mt-8 w-full bg-black text-white font-black text-2xl py-4 rounded border-2 border-black uppercase transition transform active:translate-y-1 hover:bg-gray-800">
                     Confirmar Reserva
                 </button>
             </div>
@@ -71,6 +63,15 @@
         const TELEGRAM_BOT_TOKEN = '8789184996:AAFV2JsCWBcXo-IhC0YYzQuEhuhWPUgHK6k';
         const TELEGRAM_CHAT_ID = '6519651464';
 
+        // 1. Generar Horas cada 15 minutos (Almuerzo y Cena)
+        const selectHora = document.getElementById('input-hora');
+        function generarHoras() {
+            const horas = [];
+            for(let h=13; h<=15; h++) ['00','15','30','45'].forEach(m => horas.push(`${h}:${m}`));
+            for(let h=20; h<=23; h++) ['00','15','30','45'].forEach(m => horas.push(`${h}:${m}`));
+            selectHora.innerHTML = horas.map(h => `<option value="${h}">${h}</option>`).join('');
+        }
+        generarHoras();
         document.getElementById('input-fecha').valueAsDate = new Date();
 
         async function procesarReserva() {
@@ -83,56 +84,68 @@
             if(!fecha || !hora || !nombre || !telefono) return alert("⚠️ Rellena todos los campos.");
 
             const btn = document.getElementById('btn-reservar');
-            btn.innerHTML = 'Enviando...';
+            btn.innerHTML = 'Buscando Mesa...';
             btn.disabled = true;
 
             try {
-                // 1. OBTENER EL RESTAURANTE
+                // Obtener ID del restaurante
                 const { data: rest } = await supabase.from('restaurantes').select('id').eq('slug', 'restaurante-de-pablo').single();
-                
-                // 2. BUSCAR UNA MESA LIBRE EN ESA ZONA AUTOMÁTICAMENTE
-                const { data: mesasLibres } = await supabase
-                    .from('mesas')
-                    .select('id, numero_mesa')
-                    .eq('restaurante_id', rest.id)
-                    .eq('zona', zona)
-                    .eq('estado_actual', 'libre')
-                    .order('numero_mesa', { ascending: true })
-                    .limit(1);
+                if(!rest) throw new Error("Restaurante no encontrado en BD.");
 
-                if(!mesasLibres || mesasLibres.length === 0) {
-                    alert(`❌ Lo sentimos, no quedan mesas libres en ${zona}.`);
+                // Comprobar reservas de ESE DÍA para no solapar 1 hora
+                const { data: reservasDia } = await supabase.from('reservas').select('mesa_id, hora_inicio').eq('fecha', fecha).in('estado', ['pendiente', 'asistida']);
+                
+                // Filtrar mesas que ya están ocupadas en el rango de 1 hora (-59m a +59m)
+                const reqTime = new Date(`${fecha}T${hora}:00`);
+                const mesasBloqueadasIds = (reservasDia || []).filter(r => {
+                    const resTime = new Date(`${fecha}T${r.hora_inicio}`);
+                    const diffMinutos = Math.abs((reqTime - resTime) / 60000);
+                    return diffMinutos < 60; // Hay choque de 1 hora
+                }).map(r => r.mesa_id);
+
+                // Buscar TODAS las mesas de esa zona
+                const { data: mesasZona } = await supabase.from('mesas').select('*').eq('restaurante_id', rest.id).eq('zona', zona).order('numero_mesa');
+
+                // Nos quedamos con la primera que NO esté en la lista de bloqueadas
+                const mesaAsignada = mesasZona.find(m => !mesasBloqueadasIds.includes(m.id));
+
+                if(!mesaAsignada) {
+                    alert(`❌ Lo sentimos, TODAS las mesas de ${zona} están reservadas a las ${hora}. Prueba otra hora u otra zona.`);
                     btn.innerHTML = 'Confirmar Reserva';
                     btn.disabled = false;
                     return;
                 }
 
-                const mesaAsignada = mesasLibres[0];
-
-                // 3. BLOQUEAR LA MESA (Mudar a 'reservada')
-                await supabase.from('mesas').update({ estado_actual: 'reservada' }).eq('id', mesaAsignada.id);
-
-                // 4. GUARDAR LA RESERVA EN LA BD
+                // Guardar la reserva
                 await supabase.from('reservas').insert([{
                     restaurante_id: rest.id, mesa_id: mesaAsignada.id, nombre_cliente: nombre,
                     telefono_cliente: telefono, fecha: fecha, hora_inicio: hora + ':00', estado: 'pendiente'
                 }]);
 
-                // 5. MANDAR TELEGRAM
+                // Si la reserva es para HOY y falta MENOS DE 1 HORA, bloqueamos la mesa físicamente
+                const ahora = new Date();
+                if(fecha === ahora.toISOString().split('T')[0]) {
+                    const diff = (reqTime - ahora) / 60000;
+                    if(diff > -60 && diff <= 60) {
+                        await supabase.from('mesas').update({ estado_actual: 'reservada' }).eq('id', mesaAsignada.id);
+                    }
+                }
+
+                // Telegram
                 const fechaEspanol = fecha.split('-').reverse().join('/');
-                const textoTelegram = `🍔 *NUEVA RESERVA ONLINE* 🍔\n----------------------------\n👤 *Cliente:* ${nombre}\n📞 *Teléfono:* ${telefono}\n📅 *Fecha:* ${fechaEspanol}\n⏰ *Hora:* ${hora}\n📍 *Zona:* ${zona}\n✅ *MESA ASIGNADA: ${mesaAsignada.numero_mesa}*\n----------------------------`;
+                const msg = `🍔 *NUEVA RESERVA ONLINE* 🍔\n----------------------------\n👤 *Cliente:* ${nombre}\n📞 *Teléfono:* ${telefono}\n📅 *Fecha:* ${fechaEspanol}\n⏰ *Hora:* ${hora}\n📍 *Zona:* ${zona}\n✅ *MESA ASIGNADA: ${mesaAsignada.numero_mesa}*\n----------------------------`;
                 
                 await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: textoTelegram, parse_mode: 'Markdown' })
+                    body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: msg, parse_mode: 'Markdown' })
                 });
 
-                alert("✅ ¡Reserva confirmada! Se te ha asignado la Mesa " + mesaAsignada.numero_mesa);
+                alert(`✅ ¡Reserva confirmada!\nTienes la Mesa ${mesaAsignada.numero_mesa}.`);
                 window.location.reload(); 
 
             } catch (err) {
                 console.error(err);
-                alert("❌ Hubo un error. Inténtalo de nuevo.");
+                alert("❌ Fallo de conexión. Inténtalo de nuevo.");
                 btn.innerHTML = 'Confirmar Reserva';
                 btn.disabled = false;
             }
