@@ -4,111 +4,74 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reservas - Restaurante de Pablo</title>
-    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
     <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'pablo-red': '#E60000',
-                        'pablo-yellow': '#FFF9E6',
-                        'pablo-white': '#FFFFFF',
-                    },
-                    fontFamily: {
-                        'fastfood': ['"Impact"', '"Arial Black"', 'sans-serif'],
-                        'body': ['"Arial"', 'sans-serif']
-                    }
-                }
-            }
-        }
+        tailwind.config = { theme: { extend: { colors: { 'pablo-red': '#E60000', 'pablo-yellow': '#FFF9E6', 'pablo-white': '#FFFFFF' } } } }
     </script>
-    <style>
-        .card-shadow { box-shadow: 6px 6px 0px rgba(230, 0, 0, 1); }
-        .btn-shadow { box-shadow: 4px 4px 0px rgba(0, 0, 0, 1); transition: all 0.1s; }
-        .btn-shadow:active { transform: translate(4px, 4px); box-shadow: 0px 0px 0px rgba(0, 0, 0, 1); }
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #E60000; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    </style>
 </head>
-<body class="bg-pablo-yellow min-h-screen font-body text-gray-900 pb-10">
+<body class="bg-pablo-yellow min-h-screen pb-10 text-gray-900 font-sans">
 
     <header class="bg-pablo-red text-pablo-white py-6 text-center border-b-8 border-black">
-        <h1 class="text-5xl md:text-6xl font-fastfood uppercase italic tracking-wider">Restaurante de Pablo</h1>
-        <p class="mt-2 text-xl font-bold uppercase tracking-widest">Reserva tu mesa al instante</p>
+        <h1 class="text-5xl font-black uppercase italic tracking-wider">Restaurante de Pablo</h1>
+        <p class="mt-2 font-bold uppercase">Reserva tu mesa al instante</p>
     </header>
 
     <main class="max-w-xl mx-auto mt-8 px-4">
-        <div class="bg-pablo-white p-6 md:p-8 rounded-xl border-4 border-black card-shadow">
-            
-            <h2 class="text-3xl font-fastfood uppercase mb-6 text-pablo-red border-b-4 border-black pb-2 text-center">Datos de la Reserva</h2>
-            
-            <div class="space-y-4">
-                <!-- Fila 1: Fecha y Hora -->
+        <div class="bg-white p-6 md:p-8 rounded-xl border-4 border-black" style="box-shadow: 6px 6px 0px #E60000;">
+            <h2 class="text-3xl font-black uppercase mb-6 text-pablo-red border-b-4 border-black pb-2 text-center">Datos de la Reserva</h2>
+            <div class="space-y-4 font-bold">
+                
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block font-bold mb-1">Día</label>
-                        <input type="date" id="input-fecha" class="w-full border-2 border-black p-3 rounded font-bold focus:outline-none focus:ring-2 focus:ring-pablo-red">
+                        <label class="block mb-1">Día</label>
+                        <input type="date" id="input-fecha" class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-pablo-red">
                     </div>
                     <div>
-                        <label class="block font-bold mb-1">Hora</label>
-                        <select id="input-hora" class="w-full border-2 border-black p-3 rounded font-bold focus:outline-none focus:ring-2 focus:ring-pablo-red">
-                            <option value="">Selecciona</option>
+                        <label class="block mb-1">Hora</label>
+                        <select id="input-hora" class="w-full border-2 border-black p-3 rounded">
                             <option value="13:30">13:30</option>
                             <option value="14:00">14:00</option>
-                            <option value="14:30">14:30</option>
-                            <option value="20:30">20:30</option>
                             <option value="21:00">21:00</option>
                             <option value="21:30">21:30</option>
                         </select>
                     </div>
                 </div>
 
-                <!-- Fila 2: Zona -->
                 <div>
-                    <label class="block font-bold mb-1">¿Dónde quieres la mesa?</label>
-                    <select id="input-zona" class="w-full border-2 border-black p-3 rounded font-bold focus:outline-none focus:ring-2 focus:ring-pablo-red">
+                    <label class="block mb-1">¿Dónde quieres la mesa?</label>
+                    <select id="input-zona" class="w-full border-2 border-black p-3 rounded">
                         <option value="Interior">Interior</option>
                         <option value="Terraza">Terraza</option>
                         <option value="Segunda Planta">Segunda Planta</option>
                     </select>
                 </div>
 
-                <!-- Fila 3: Datos de Contacto -->
                 <div>
-                    <label class="block font-bold mb-1">Nombre Completo</label>
-                    <input type="text" id="input-nombre" placeholder="Ej: Pablo Gómez" class="w-full border-2 border-black p-3 rounded font-bold focus:outline-none focus:ring-2 focus:ring-pablo-red">
+                    <label class="block mb-1">Nombre Completo</label>
+                    <input type="text" id="input-nombre" placeholder="Ej: Pablo Gómez" class="w-full border-2 border-black p-3 rounded">
                 </div>
                 <div>
-                    <label class="block font-bold mb-1">Teléfono</label>
-                    <input type="tel" id="input-telefono" placeholder="Ej: 600123456" class="w-full border-2 border-black p-3 rounded font-bold focus:outline-none focus:ring-2 focus:ring-pablo-red">
+                    <label class="block mb-1">Teléfono</label>
+                    <input type="tel" id="input-telefono" placeholder="Ej: 600123456" class="w-full border-2 border-black p-3 rounded">
                 </div>
 
-                <!-- Botón de Confirmar -->
-                <button onclick="procesarReserva()" id="btn-reservar" class="mt-8 w-full bg-black text-pablo-white font-fastfood text-3xl py-4 rounded border-2 border-black btn-shadow uppercase tracking-wider">
+                <button onclick="procesarReserva()" id="btn-reservar" class="mt-8 w-full bg-black text-white font-black text-2xl py-4 rounded border-2 border-black uppercase transition transform active:translate-y-1">
                     Confirmar Reserva
                 </button>
             </div>
-
         </div>
     </main>
 
     <script>
-        // CONFIGURACIÓN TELEGRAM
+        const SUPABASE_URL = 'https://ncxrtpmndkmgegtkasub.supabase.co'; 
+        const SUPABASE_ANON_KEY = 'sb_publishable_05L29aUddOhhWdeH7qZiqg_3Xq_EKjC';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
         const TELEGRAM_BOT_TOKEN = '8789184996:AAFV2JsCWBcXo-IhC0YYzQuEhuhWPUgHK6k';
         const TELEGRAM_CHAT_ID = '6519651464';
 
-        // Poner la fecha de hoy por defecto
         document.getElementById('input-fecha').valueAsDate = new Date();
-
-        // Función para transformar YYYY-MM-DD a DD/MM/YYYY
-        function formatearFechaEspanol(fechaSQL) {
-            const partes = fechaSQL.split('-');
-            if(partes.length !== 3) return fechaSQL;
-            return `${partes[2]}/${partes[1]}/${partes[0]}`;
-        }
 
         async function procesarReserva() {
             const fecha = document.getElementById('input-fecha').value;
@@ -117,53 +80,59 @@
             const nombre = document.getElementById('input-nombre').value;
             const telefono = document.getElementById('input-telefono').value;
 
-            // Validaciones básicas
-            if(!fecha || !hora || !nombre || !telefono) {
-                alert("⚠️ Por favor, rellena todos los campos antes de confirmar.");
-                return;
-            }
+            if(!fecha || !hora || !nombre || !telefono) return alert("⚠️ Rellena todos los campos.");
 
             const btn = document.getElementById('btn-reservar');
-            btn.innerHTML = '<div class="loader"></div> Enviando...';
+            btn.innerHTML = 'Enviando...';
             btn.disabled = true;
 
             try {
-                // 1. Formateamos la fecha al estilo español (Día/Mes/Año)
-                const fechaEspanol = formatearFechaEspanol(fecha);
+                // 1. OBTENER EL RESTAURANTE
+                const { data: rest } = await supabase.from('restaurantes').select('id').eq('slug', 'restaurante-de-pablo').single();
+                
+                // 2. BUSCAR UNA MESA LIBRE EN ESA ZONA AUTOMÁTICAMENTE
+                const { data: mesasLibres } = await supabase
+                    .from('mesas')
+                    .select('id, numero_mesa')
+                    .eq('restaurante_id', rest.id)
+                    .eq('zona', zona)
+                    .eq('estado_actual', 'libre')
+                    .order('numero_mesa', { ascending: true })
+                    .limit(1);
 
-                // 2. Preparamos el mensaje exacto para Telegram
-                const textoTelegram = 
-`🍔 *NUEVA RESERVA ONLINE* 🍔
------------------------------------------
-👤 *Cliente:* ${nombre}
-📞 *Teléfono:* ${telefono}
-📅 *Fecha:* ${fechaEspanol}
-⏰ *Hora:* ${hora}
-📍 *Zona elegida:* ${zona}
------------------------------------------`;
-
-                // 3. Enviamos el mensaje directo a la API de Telegram
-                const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        chat_id: TELEGRAM_CHAT_ID,
-                        text: textoTelegram,
-                        parse_mode: 'Markdown'
-                    })
-                });
-
-                if(!response.ok) {
-                    throw new Error("Fallo al enviar a Telegram");
+                if(!mesasLibres || mesasLibres.length === 0) {
+                    alert(`❌ Lo sentimos, no quedan mesas libres en ${zona}.`);
+                    btn.innerHTML = 'Confirmar Reserva';
+                    btn.disabled = false;
+                    return;
                 }
 
-                // 4. Éxito
-                alert("✅ ¡Tu reserva se ha enviado correctamente! Te esperamos.");
-                window.location.reload(); // Recargar la página para limpiar el formulario
+                const mesaAsignada = mesasLibres[0];
+
+                // 3. BLOQUEAR LA MESA (Mudar a 'reservada')
+                await supabase.from('mesas').update({ estado_actual: 'reservada' }).eq('id', mesaAsignada.id);
+
+                // 4. GUARDAR LA RESERVA EN LA BD
+                await supabase.from('reservas').insert([{
+                    restaurante_id: rest.id, mesa_id: mesaAsignada.id, nombre_cliente: nombre,
+                    telefono_cliente: telefono, fecha: fecha, hora_inicio: hora + ':00', estado: 'pendiente'
+                }]);
+
+                // 5. MANDAR TELEGRAM
+                const fechaEspanol = fecha.split('-').reverse().join('/');
+                const textoTelegram = `🍔 *NUEVA RESERVA ONLINE* 🍔\n----------------------------\n👤 *Cliente:* ${nombre}\n📞 *Teléfono:* ${telefono}\n📅 *Fecha:* ${fechaEspanol}\n⏰ *Hora:* ${hora}\n📍 *Zona:* ${zona}\n✅ *MESA ASIGNADA: ${mesaAsignada.numero_mesa}*\n----------------------------`;
+                
+                await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: textoTelegram, parse_mode: 'Markdown' })
+                });
+
+                alert("✅ ¡Reserva confirmada! Se te ha asignado la Mesa " + mesaAsignada.numero_mesa);
+                window.location.reload(); 
 
             } catch (err) {
-                console.error("Error:", err);
-                alert("❌ Hubo un problema de conexión. Inténtalo de nuevo.");
+                console.error(err);
+                alert("❌ Hubo un error. Inténtalo de nuevo.");
                 btn.innerHTML = 'Confirmar Reserva';
                 btn.disabled = false;
             }
