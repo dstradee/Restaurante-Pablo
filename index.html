@@ -17,7 +17,6 @@
     <main class="max-w-xl mx-auto mt-8 px-4 pb-10">
         <div class="bg-white p-6 md:p-8 rounded-xl border-4 border-black shadow-[6px_6px_0px_#E60000]">
             
-            <!-- CABECERA -->
             <div class="flex justify-between items-center border-b-4 border-black pb-4 mb-6">
                 <h2 id="titulo-principal" class="text-3xl font-black uppercase text-[#E60000]">Reservar</h2>
                 <button id="btn-cambiar-vista" onclick="cambiarVista()" class="text-sm font-black bg-yellow-400 text-black px-4 py-2 rounded-lg border-2 border-black shadow-[4px_4px_0px_#000] active:translate-y-1 active:shadow-none uppercase transition">
@@ -127,10 +126,9 @@
 
 
     <!-- ========================================== -->
-    <!-- BLOQUE 1: CÓDIGO VISUAL (NUNCA FALLA)      -->
+    <!-- CÓDIGO VISUAL (CON EL SALTO DE DÍA AÑADIDO)-->
     <!-- ========================================== -->
     <script>
-        // Función mágica que quita tildes, comas y espacios
         function normalizarTexto(str) {
             if(!str) return '';
             return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
@@ -141,25 +139,41 @@
             const selectHora = document.getElementById(idHora);
             if (!fechaInput || !selectHora) return;
 
-            const ahora = new Date();
+            let ahora = new Date();
+            
+            // 🔥 LA MAGIA: Si ya son las 23:00, forzamos que sea "Mañana"
+            if (ahora.getHours() >= 23) {
+                ahora.setDate(ahora.getDate() + 1);
+                ahora.setHours(0, 0, 0, 0); // Reseteamos la hora
+            }
+
             const year = ahora.getFullYear();
             const month = String(ahora.getMonth() + 1).padStart(2, '0');
             const day = String(ahora.getDate()).padStart(2, '0');
-            const hoyIso = `${year}-${month}-${day}`;
+            const fechaMinima = `${year}-${month}-${day}`;
             
-            fechaInput.min = hoyIso;
-            if (!fechaInput.value) fechaInput.value = hoyIso;
+            fechaInput.min = fechaMinima;
+            // Si el cliente no ha elegido fecha, o eligió el pasado, le ponemos la mínima válida
+            if (!fechaInput.value || fechaInput.value < fechaMinima) {
+                fechaInput.value = fechaMinima;
+            }
 
             const fechaSeleccionada = fechaInput.value;
-            let esHoy = (fechaSeleccionada === hoyIso);
+            // Hora real de la vida real (sin trampear mañana)
+            const horaReal = new Date(); 
+            const hoyRealIso = `${horaReal.getFullYear()}-${String(horaReal.getMonth() + 1).padStart(2, '0')}-${String(horaReal.getDate()).padStart(2, '0')}`;
+            
+            let esHoyReal = (fechaSeleccionada === hoyRealIso);
             let opcionesHTML = "";
 
             for(let h = 8; h <= 23; h++) {
                 let minutosPosibles = (h === 23) ? ['00'] : ['00', '15', '30', '45'];
                 for(let m of minutosPosibles) {
                     let minutosOpcion = (h * 60) + parseInt(m);
-                    let minutosAhora = (ahora.getHours() * 60) + ahora.getMinutes();
-                    if (esHoy && minutosOpcion <= minutosAhora) continue;
+                    let minutosAhora = (horaReal.getHours() * 60) + horaReal.getMinutes();
+                    
+                    // Si ha seleccionado el día de hoy REAL, escondemos las horas que ya pasaron
+                    if (esHoyReal && minutosOpcion <= minutosAhora) continue;
 
                     let horaFormateada = h < 10 ? '0' + h : h; 
                     opcionesHTML += `<option value="${horaFormateada}:${m}">${horaFormateada}:${m}</option>`;
@@ -210,7 +224,7 @@
     </script>
 
     <!-- ========================================== -->
-    <!-- BLOQUE 2: BASE DE DATOS Y TELEGRAM         -->
+    <!-- BASE DE DATOS Y TELEGRAM (INTOCABLE)       -->
     <!-- ========================================== -->
     <script>
         const SUPABASE_URL = 'https://ncxrtpmndkmgegtkasub.supabase.co'; 
@@ -234,18 +248,15 @@
             btn.innerHTML = 'Enviando...'; btn.disabled = true;
 
             const letrasAleatorias = Math.random().toString(36).substring(2, 5).toUpperCase();
-            // Nombre limpio sin tildes ni espacios para el Identificador
             const nombreLimpio = normalizarTexto(nombre);
             const identificadorCompleto = `${nombreLimpio}${telefono}${letrasAleatorias}`;
 
             try {
                 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-                // Mandamos Telegram primero para asegurar que tú lo recibes sí o sí
                 const msg = `🍔 *NUEVA RESERVA* 🍔\n👤 *Nombre:* ${nombre}\n📞 *Tlf:* ${telefono}\n📅 *Día:* ${fecha}\n⏰ *Hora:* ${hora}\n📍 *Zona:* ${zona}\n🔑 *ID:* ${identificadorCompleto}`;
                 fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: msg, parse_mode: 'Markdown' }) });
 
-                // AHORA COMPROBAMOS BIEN LA BASE DE DATOS
                 const { data: mesasZona, error: errMesas } = await supabase.from('mesas').select('id').eq('zona', zona);
                 if (errMesas) throw errMesas;
 
@@ -266,7 +277,6 @@
                     btn.innerHTML = 'Confirmar Reserva'; btn.disabled = false; return;
                 }
 
-                // INTENTAMOS GUARDAR CON COMPROBADOR DE ERRORES
                 const { error: insertError } = await supabase.from('reservas').insert([{
                     mesa_id: mesaAsignada.id, 
                     nombre_cliente: nombre, 
@@ -277,12 +287,10 @@
                 }]);
 
                 if (insertError) {
-                    console.error("Fallo exacto de Supabase:", insertError);
                     alert("❌ Fallo en la Base de Datos al guardar: " + insertError.message);
                     btn.innerHTML = 'Confirmar Reserva'; btn.disabled = false; return;
                 }
 
-                // Si todo ha ido bien, mostramos el modal verde
                 document.getElementById('id-nombre').innerText = nombreLimpio;
                 document.getElementById('id-tel').innerText = telefono;
                 document.getElementById('id-letras').innerText = letrasAleatorias;
@@ -290,15 +298,12 @@
                 document.getElementById('modal-identificador').classList.remove('hidden');
 
             } catch (err) {
-                console.error(err);
                 alert("❌ Error de conexión al hacer la reserva."); 
                 btn.innerHTML = 'Confirmar Reserva'; btn.disabled = false;
             }
         }
 
-        // BUSCADOR A PRUEBA DE TILDES Y ESPACIOS
         async function buscarReserva() {
-            // Quitamos tildes y espacios de lo que escribe el usuario
             const inputVal = normalizarTexto(document.getElementById('mod-identificador').value);
             if(!inputVal) return alert("⚠️ Introduce tu identificador.");
             
@@ -309,12 +314,11 @@
                 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 
                 const { data: reservas, error: errorBD } = await supabase.from('reservas').select('*');
-                if(errorBD) throw errorBD; // Si falla la BD, nos salta el error abajo
+                if(errorBD) throw errorBD; 
 
                 const { data: mesas } = await supabase.from('mesas').select('id, zona');
 
                 const reservaEncontrada = (reservas || []).find(r => {
-                    // Quitamos tildes y espacios a los nombres de la BD para que coincida 100%
                     const n = normalizarTexto(r.nombre_cliente);
                     const tel = normalizarTexto(r.telefono_cliente);
                     const sec = normalizarTexto(r.codigo_secreto);
@@ -342,7 +346,6 @@
                 setTimeout(() => { document.getElementById('gest-hora').value = miReservaActual.hora_inicio.substring(0,5); }, 100);
 
             } catch (error) {
-                console.error("Fallo al buscar:", error);
                 alert("❌ Fallo conectando a Supabase al buscar. " + (error.message || ""));
             }
             btn.innerHTML = 'Buscar mi reserva'; btn.disabled = false;
