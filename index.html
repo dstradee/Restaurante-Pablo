@@ -261,4 +261,80 @@
             if(!fechaElegida) return;
             
             const caja = document.getElementById('caja-reservas');
-            caja.innerHTML = '<p class="text-center font-bold text-yellow-400">Descargando base d
+            caja.innerHTML = '<p class="text-center font-bold text-yellow-400">Descargando base de datos...</p>';
+
+            try {
+                const { data: reservasDato, error } = await supabase
+                    .from('reservas')
+                    .select('hora_inicio, nombre_cliente, telefono_cliente, codigo_secreto, mesas(zona)')
+                    .eq('fecha', fechaElegida)
+                    .order('hora_inicio', { ascending: true });
+
+                if (error) throw new Error(error.message);
+
+                if (!reservasDato || reservasDato.length === 0) {
+                    caja.innerHTML = `<div class="bg-gray-800 p-6 rounded-xl border border-gray-600 text-center"><p class="text-xl font-bold text-gray-400">No hay reservas para este día.</p></div>`;
+                    return;
+                }
+
+                let contenidoHTML = "";
+                reservasDato.forEach(res => {
+                    let horaLimpia = res.hora_inicio ? res.hora_inicio.substring(0, 5) : "--:--";
+                    
+                    // Manejo robusto de la relación por si Supabase lo devuelve como array u objeto
+                    let zonaObj = Array.isArray(res.mesas) ? res.mesas[0] : res.mesas;
+                    let zona = (zonaObj && zonaObj.zona) ? zonaObj.zona : "Sin zona";
+                    let color = zona.toLowerCase() === 'interior' ? 'text-blue-400' : 'text-orange-400';
+
+                    contenidoHTML += `
+                        <div class="bg-gray-800 p-4 rounded-xl border-l-4 border-yellow-400 mb-3 shadow">
+                            <div class="flex justify-between items-center border-b border-gray-700 pb-2 mb-2">
+                                <span class="text-2xl font-black text-yellow-400">${horaLimpia}</span>
+                                <span class="text-lg font-black uppercase ${color}">${zona}</span>
+                            </div>
+                            <p class="text-xl font-black text-white uppercase">${res.nombre_cliente || 'Anónimo'}</p>
+                            <p class="text-gray-400 font-bold">📞 ${res.telefono_cliente || 'No especificado'}</p>
+                            <p class="text-gray-500 text-sm mt-1">Ref: ${res.codigo_secreto || 'N/A'}</p>
+                        </div>
+                    `;
+                });
+
+                caja.innerHTML = contenidoHTML;
+
+            } catch (error) {
+                console.error(error);
+                caja.innerHTML = `<p class="text-center font-bold text-red-500">❌ Error al descargar las reservas: ${error.message}</p>`;
+            }
+        }
+
+        // ==========================================
+        // 6. NAVEGACIÓN Y ARRANQUE INICIAL
+        // ==========================================
+        function verPestaña(cual) {
+            if (cual === 'aforo') {
+                document.getElementById('vista-aforo').classList.remove('hidden');
+                document.getElementById('vista-reservas').classList.add('hidden');
+                document.getElementById('tab-aforo').className = "flex-1 bg-yellow-400 text-black font-black py-3 rounded uppercase text-sm";
+                document.getElementById('tab-reservas').className = "flex-1 bg-gray-800 text-gray-400 font-bold py-3 rounded uppercase text-sm border-2 border-gray-700";
+            } else {
+                document.getElementById('vista-aforo').classList.add('hidden');
+                document.getElementById('vista-reservas').classList.remove('hidden');
+                document.getElementById('tab-reservas').className = "flex-1 bg-yellow-400 text-black font-black py-3 rounded uppercase text-sm";
+                document.getElementById('tab-aforo').className = "flex-1 bg-gray-800 text-gray-400 font-bold py-3 rounded uppercase text-sm border-2 border-gray-700";
+                
+                if(!document.getElementById('input-fecha-lista').value) {
+                    const d = new Date();
+                    document.getElementById('input-fecha-lista').value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                }
+                descargarListaReservas();
+            }
+        }
+
+        actualizarDatos();
+
+        // Refresco silencioso garantizado cada 10 segundos
+        setInterval(actualizarDatos, 10000);
+
+    </script>
+</body>
+</html>
