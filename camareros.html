@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Camareros - Restaurante de Pablo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen font-sans select-none">
+
+    <header class="bg-black py-4 px-6 flex justify-between items-center border-b-2 border-gray-700">
+        <h1 class="text-2xl font-black uppercase text-yellow-400">Restaurante Pablo (Camareros)</h1>
+        <span class="text-green-400 font-bold text-sm animate-pulse">● Conectado en Vivo</span>
+    </header>
+
+    <main class="p-4 max-w-5xl mx-auto">
+        
+        <!-- ZONA: INTERIOR -->
+        <h2 class="text-xl font-bold uppercase mb-2 border-b border-gray-600 pb-1 text-blue-300">Interior (1-20)</h2>
+        <div id="grid-interior" class="grid grid-cols-4 md:grid-cols-5 gap-3 mb-6"></div>
+
+        <!-- ZONA: TERRAZA -->
+        <h2 class="text-xl font-bold uppercase mb-2 border-b border-gray-600 pb-1 text-orange-300">Terraza (21-30)</h2>
+        <div id="grid-terraza" class="grid grid-cols-4 md:grid-cols-5 gap-3 mb-6"></div>
+
+        <!-- ZONA: SEGUNDA PLANTA -->
+        <h2 class="text-xl font-bold uppercase mb-2 border-b border-gray-600 pb-1 text-purple-300">Segunda Planta (31-40)</h2>
+        <div id="grid-planta-alta" class="grid grid-cols-4 md:grid-cols-5 gap-3 mb-6"></div>
+
+    </main>
+
+    <script>
+        const SUPABASE_URL = 'https://ncxrtpmndkmgegtkasub.supabase.co'; 
+        const SUPABASE_ANON_KEY = 'sb_publishable_05L29aUddOhhWdeH7qZiqg_3Xq_EKjC';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let todasLasMesas = [];
+
+        async function cargarMesas() {
+            const { data } = await supabase.from('mesas').select('*').order('numero_mesa', { ascending: true });
+            if(data) {
+                todasLasMesas = data;
+                pintarMesas();
+            }
+        }
+
+        function pintarMesas() {
+            document.getElementById('grid-interior').innerHTML = '';
+            document.getElementById('grid-terraza').innerHTML = '';
+            document.getElementById('grid-planta-alta').innerHTML = '';
+
+            todasLasMesas.forEach(mesa => {
+                const btn = document.createElement('button');
+                btn.className = `h-16 w-full rounded-lg font-black text-xl border-2 shadow flex flex-col items-center justify-center transition active:scale-95`;
+                
+                // Colores según el PDF
+                if(mesa.estado_actual === 'libre') {
+                    btn.classList.add('bg-green-600', 'border-green-800', 'text-white');
+                } else if(mesa.estado_actual === 'ocupada') {
+                    btn.classList.add('bg-red-600', 'border-red-900', 'text-white');
+                } else if(mesa.estado_actual === 'reservada') {
+                    btn.classList.add('bg-yellow-400', 'border-yellow-600', 'text-black');
+                }
+
+                btn.innerHTML = `<span>${mesa.numero_mesa}</span>`;
+                btn.onclick = () => manejarMesaTactica(mesa);
+
+                // Distribuir en el contenedor correcto
+                if(mesa.zona === 'Interior') document.getElementById('grid-interior').appendChild(btn);
+                if(mesa.zona === 'Terraza') document.getElementById('grid-terraza').appendChild(btn);
+                if(mesa.zona === 'Segunda Planta') document.getElementById('grid-planta-alta').appendChild(btn);
+            });
+        }
+
+        async function manejarMesaTactica(mesa) {
+            let nuevoEstado = null;
+
+            if(mesa.estado_actual === 'libre') {
+                if(confirm(`Mesa ${mesa.numero_mesa}: ¿Sentar clientes? (Pasa a OCUPADA)`)) nuevoEstado = 'ocupada';
+            } 
+            else if(mesa.estado_actual === 'ocupada') {
+                if(confirm(`Mesa ${mesa.numero_mesa}: ¿Liberar mesa y limpiada? (Pasa a LIBRE)`)) nuevoEstado = 'libre';
+            } 
+            else if(mesa.estado_actual === 'reservada') {
+                if(confirm(`Mesa ${mesa.numero_mesa}: RESERVADA. ¿Han llegado los clientes? (Aceptar = Ocupar | Cancelar = Dejar reservada)`)) {
+                    nuevoEstado = 'ocupada';
+                } else {
+                    if(confirm(`¿Deseas marcar la Mesa ${mesa.numero_mesa} como no presentada y LIBERARLA?`)) nuevoEstado = 'libre';
+                }
+            }
+
+            if(nuevoEstado) {
+                // Actualizamos en Supabase (esto dispara automáticamente el Realtime para los demás)
+                await supabase.from('mesas').update({ estado_actual: nuevoEstado }).eq('id', mesa.id);
+            }
+        }
+
+        // TIEMPO REAL: Si un cliente reserva por la web, o otro camarero toca una mesa, se repinta sola
+        supabase.channel('panel-camareros')
+          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'mesas' }, payload => {
+              const mesaActualizada = payload.new;
+              const index = todasLasMesas.findIndex(m => m.id === mesaActualizada.id);
+              if(index !== -1) {
+                  todasLasMesas[index].estado_actual = mesaActualizada.estado_actual;
+                  pintarMesas(); // Repintar
+              }
+          })
+          .subscribe();
+
+        // Iniciar
+        cargarMesas();
+    </script>
+</body>
+</html>
