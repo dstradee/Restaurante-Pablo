@@ -5,10 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reserva - Restaurante de Pablo</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Librería oficial de Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-100 relative">
 
     <header class="bg-[#E60000] text-white py-6 text-center border-b-8 border-black">
         <h1 class="text-5xl font-black uppercase italic tracking-wider">Restaurante de Pablo</h1>
@@ -17,76 +16,59 @@
 
     <main class="max-w-xl mx-auto mt-8 px-4 pb-10">
         <div class="bg-white p-6 md:p-8 rounded-xl border-4 border-black shadow-[6px_6px_0px_#E60000]">
-            <h2 class="text-3xl font-black uppercase mb-6 text-[#E60000] border-b-4 border-black pb-2 text-center">Tu Reserva</h2>
-            <div class="space-y-4 font-bold">
-                
+            
+            <!-- CABECERA DE LA CAJA (RESERVAR / TU RESERVA) -->
+            <div class="flex justify-between items-end border-b-4 border-black pb-2 mb-6">
+                <h2 id="titulo-principal" class="text-3xl font-black uppercase text-[#E60000]">Reservar</h2>
+                <button id="btn-cambiar-vista" onclick="cambiarVista()" class="text-sm font-bold text-gray-500 hover:text-black underline uppercase transition">
+                    Modificar Reserva
+                </button>
+            </div>
+
+            <!-- VISTA 1: FORMULARIO DE RESERVA -->
+            <div id="vista-reservar" class="space-y-4 font-bold">
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block mb-1">Día</label>
-                        <!-- Le hemos añadido "onchange" para que actualice las horas si cambia de día -->
                         <input type="date" id="input-fecha" onchange="actualizarHoras()" required class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]">
                     </div>
                     <div>
                         <label class="block mb-1">Hora</label>
-                        <!-- DESPLEGABLE DE HORAS -->
                         <select id="input-hora" required class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]"></select>
                     </div>
                 </div>
 
-                <!-- CÓDIGO INTELIGENTE DE HORAS -->
                 <script>
                     function actualizarHoras() {
                         const fechaInput = document.getElementById('input-fecha');
                         const selectHora = document.getElementById('input-hora');
-                        
-                        // Sacamos la fecha y hora de ahora mismo
                         const ahora = new Date();
                         const year = ahora.getFullYear();
                         const month = String(ahora.getMonth() + 1).padStart(2, '0');
                         const day = String(ahora.getDate()).padStart(2, '0');
                         const hoyIso = `${year}-${month}-${day}`;
                         
-                        // 1. Bloqueamos el calendario para que no puedan elegir días en el pasado
                         fechaInput.min = hoyIso;
-
-                        // 2. Si entra por primera vez, le ponemos la fecha de hoy por defecto
-                        if (!fechaInput.value) {
-                            fechaInput.value = hoyIso;
-                        }
+                        if (!fechaInput.value) fechaInput.value = hoyIso;
 
                         const fechaSeleccionada = fechaInput.value;
                         let esHoy = (fechaSeleccionada === hoyIso);
                         let opcionesHTML = "";
 
-                        // Generamos las horas
                         for(let h = 8; h <= 23; h++) {
                             let minutosPosibles = (h === 23) ? ['00'] : ['00', '15', '30', '45'];
-                            
                             for(let m of minutosPosibles) {
-                                // Convertimos a minutos para saber si la hora ya ha pasado hoy
                                 let minutosOpcion = (h * 60) + parseInt(m);
                                 let minutosAhora = (ahora.getHours() * 60) + ahora.getMinutes();
+                                if (esHoy && minutosOpcion <= minutosAhora) continue;
 
-                                // Si el cliente elige "hoy" y esa hora ya es del pasado, la ocultamos (no se pinta)
-                                if (esHoy && minutosOpcion <= minutosAhora) {
-                                    continue;
-                                }
-
-                                // Si no ha pasado (o es para mañana), la añadimos al desplegable
                                 let horaFormateada = h < 10 ? '0' + h : h; 
                                 opcionesHTML += `<option value="${horaFormateada}:${m}">${horaFormateada}:${m}</option>`;
                             }
                         }
-
-                        // Si ya es muy tarde y el bar ha cerrado, mostramos este mensaje
-                        if (opcionesHTML === "") {
-                            opcionesHTML = `<option value="">Cerrado por hoy / Sin horas</option>`;
-                        }
-
+                        if (opcionesHTML === "") opcionesHTML = `<option value="">Cerrado / Sin horas</option>`;
                         selectHora.innerHTML = opcionesHTML;
                     }
-
-                    // Ejecutamos la función nada más abrir la página
                     actualizarHoras();
                 </script>
 
@@ -100,12 +82,10 @@
 
                 <div>
                     <label class="block mb-1">Nombre Completo <span class="text-red-500">*</span></label>
-                    <!-- Campo obligatorio (required) con placeholder -->
                     <input type="text" id="input-nombre" placeholder="Ej: Pablo Gómez" required class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]">
                 </div>
                 <div>
                     <label class="block mb-1">Teléfono <span class="text-red-500">*</span></label>
-                    <!-- Campo obligatorio (required) con placeholder -->
                     <input type="tel" id="input-telefono" placeholder="Ej: 600123456" required class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]">
                 </div>
 
@@ -113,10 +93,82 @@
                     Confirmar Reserva
                 </button>
             </div>
+
+            <!-- VISTA 2: MODIFICAR O CANCELAR RESERVA (Oculta por defecto) -->
+            <div id="vista-modificar" class="hidden space-y-4 font-bold">
+                <p class="text-sm text-gray-600 mb-4">Introduce los datos de tu identificador para buscar tu reserva:</p>
+                
+                <div>
+                    <label class="block mb-1">Nombre (Sin espacios)</label>
+                    <!-- Al escribir, el texto se pone ROJO automáticamente -->
+                    <input type="text" id="mod-nombre" placeholder="PABLO" class="w-full border-2 border-black p-3 rounded focus:outline-none text-red-600 font-black uppercase focus:border-red-600">
+                </div>
+                <div>
+                    <label class="block mb-1">Teléfono</label>
+                    <!-- Al escribir, el texto se pone AZUL automáticamente -->
+                    <input type="tel" id="mod-telefono" placeholder="600123456" class="w-full border-2 border-black p-3 rounded focus:outline-none text-blue-600 font-black focus:border-blue-600">
+                </div>
+                <div>
+                    <label class="block mb-1">Código de 3 letras</label>
+                    <!-- Al escribir, el texto se pone VERDE automáticamente -->
+                    <input type="text" id="mod-codigo" placeholder="ABC" maxlength="3" class="w-full border-2 border-black p-3 rounded focus:outline-none text-green-600 font-black uppercase focus:border-green-600 tracking-widest">
+                </div>
+
+                <button onclick="buscarReserva()" class="mt-8 w-full bg-black text-white font-black text-2xl py-4 rounded border-2 border-black uppercase active:scale-95 transition">
+                    Buscar mi reserva
+                </button>
+            </div>
+
         </div>
     </main>
 
+    <!-- PANTALLA EMERGENTE (MODAL) DEL IDENTIFICADOR -->
+    <div id="modal-identificador" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50">
+        <div class="bg-white border-4 border-black p-6 md:p-8 rounded-xl max-w-md w-full text-center shadow-[8px_8px_0px_#E60000]">
+            <h3 class="text-4xl font-black text-[#E60000] uppercase mb-2">¡Reserva Confirmada!</h3>
+            <p class="font-bold text-lg mb-4 leading-tight">Guarda este identificador, hazle una captura de pantalla para poder modificar o cancelar tu reserva:</p>
+            
+            <!-- EL CÓDIGO CON SUS COLORES -->
+            <div class="text-2xl md:text-3xl font-black bg-gray-100 p-4 rounded border-4 border-black tracking-wider break-words mb-6">
+                <span id="id-nombre" class="text-red-600"></span><span id="id-tel" class="text-blue-600"></span><span id="id-letras" class="text-green-600"></span>
+            </div>
+            
+            <button onclick="window.location.reload()" class="w-full bg-black text-white font-black text-2xl py-4 rounded border-2 border-black uppercase active:scale-95 transition">
+                Cerrar y Volver
+            </button>
+        </div>
+    </div>
+
     <script>
+        // FUNCIÓN PARA CAMBIAR ENTRE RESERVAR Y MODIFICAR
+        function cambiarVista() {
+            const vistaReservar = document.getElementById('vista-reservar');
+            const vistaModificar = document.getElementById('vista-modificar');
+            const titulo = document.getElementById('titulo-principal');
+            const btn = document.getElementById('btn-cambiar-vista');
+
+            if (vistaReservar.classList.contains('hidden')) {
+                vistaReservar.classList.remove('hidden');
+                vistaModificar.classList.add('hidden');
+                titulo.innerText = "Reservar";
+                btn.innerText = "Modificar Reserva";
+            } else {
+                vistaReservar.classList.add('hidden');
+                vistaModificar.classList.remove('hidden');
+                titulo.innerText = "Tu Reserva";
+                btn.innerText = "Volver a Reservar";
+            }
+        }
+
+        // FUNCIÓN QUE HARÁ LA BÚSQUEDA EN EL FUTURO (Preparada para cuando ataquemos la base de datos)
+        function buscarReserva() {
+            const n = document.getElementById('mod-nombre').value;
+            const t = document.getElementById('mod-telefono').value;
+            const c = document.getElementById('mod-codigo').value;
+            if(!n || !t || !c) return alert("⚠️ Rellena los 3 colores para buscar tu reserva.");
+            alert("Buscando reserva... (En el próximo paso conectaremos esto a tu Base de Datos para que puedan borrarla).");
+        }
+
         // LÓGICA DE LA RESERVA
         async function procesarReserva() {
             const fecha = document.getElementById('input-fecha').value;
@@ -125,21 +177,25 @@
             const nombre = document.getElementById('input-nombre').value.trim();
             const telefono = document.getElementById('input-telefono').value.trim();
 
-            // DOBLE SEGURIDAD: Comprobamos si los campos están vacíos antes de enviarlo
             if(!fecha || !hora || !nombre || !telefono) {
                 return alert("⚠️ Por favor, rellena tu Nombre y Teléfono obligatoriamente.");
             }
 
             const btn = document.getElementById('btn-reservar');
-            btn.innerHTML = 'Enviando Reserva...';
+            btn.innerHTML = 'Enviando...';
             btn.disabled = true;
 
+            // GENERAMOS LAS 3 LETRAS ALEATORIAS Y EL NOMBRE LIMPIO (Sin espacios)
+            const letrasAleatorias = Math.random().toString(36).substring(2, 5).toUpperCase();
+            const nombreLimpio = nombre.replace(/\s+/g, '').toUpperCase();
+            const identificadorCompleto = `${nombreLimpio}${telefono}${letrasAleatorias}`;
+
             try {
-                // 1. LO PRIMERO DE TODO: ENVIAR TELEGRAM (Así nunca falla el botón)
+                // 1. ENVIAR TELEGRAM
                 const TELEGRAM_BOT_TOKEN = '8789184996:AAFV2JsCWBcXo-IhC0YYzQuEhuhWPUgHK6k';
                 const TELEGRAM_CHAT_ID = '6519651464';
                 
-                const msg = `🍔 *NUEVA RESERVA* 🍔\n👤 *Nombre:* ${nombre}\n📞 *Tlf:* ${telefono}\n📅 *Día:* ${fecha}\n⏰ *Hora:* ${hora}\n📍 *Zona:* ${zona}`;
+                const msg = `🍔 *NUEVA RESERVA* 🍔\n👤 *Nombre:* ${nombre}\n📞 *Tlf:* ${telefono}\n📅 *Día:* ${fecha}\n⏰ *Hora:* ${hora}\n📍 *Zona:* ${zona}\n🔑 *IDENTIFICADOR:* ${identificadorCompleto}`;
                 
                 await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
                     method: 'POST', 
@@ -147,7 +203,7 @@
                     body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: msg, parse_mode: 'Markdown' })
                 });
 
-                // 2. INTENTAR GUARDAR EN SUPABASE EN SEGUNDO PLANO
+                // 2. GUARDAR EN SUPABASE
                 try {
                     const SUPABASE_URL = 'https://ncxrtpmndkmgegtkasub.supabase.co'; 
                     const SUPABASE_ANON_KEY = 'sb_publishable_05L29aUddOhhWdeH7qZiqg_3Xq_EKjC';
@@ -178,7 +234,8 @@
                                 nombre_cliente: nombre,
                                 telefono_cliente: telefono, 
                                 fecha: fecha, 
-                                hora_inicio: hora + ':00'
+                                hora_inicio: hora + ':00',
+                                codigo_secreto: letrasAleatorias // Guardamos las 3 letras
                             }]);
                         }
                     }
@@ -186,9 +243,14 @@
                     console.log("No se pudo conectar a la BD, pero el Telegram se envió correctamente.", dbError);
                 }
 
-                // 3. AVISAR DE QUE TODO HA IDO BIEN
-                alert(`✅ ¡Éxito! Tienes la mesa reservada en ${zona} a las ${hora}.`);
-                window.location.reload(); 
+                // 3. MOSTRAR EL IDENTIFICADOR VISUALMENTE EN VEZ DEL "ALERT"
+                document.getElementById('id-nombre').innerText = nombreLimpio;
+                document.getElementById('id-tel').innerText = telefono;
+                document.getElementById('id-letras').innerText = letrasAleatorias;
+                
+                // Quitamos el scroll del fondo y mostramos el modal
+                document.body.style.overflow = 'hidden';
+                document.getElementById('modal-identificador').classList.remove('hidden');
 
             } catch (err) {
                 console.error("Error General:", err);
