@@ -17,16 +17,15 @@
     <main class="max-w-xl mx-auto mt-8 px-4 pb-10">
         <div class="bg-white p-6 md:p-8 rounded-xl border-4 border-black shadow-[6px_6px_0px_#E60000]">
             
-            <!-- CABECERA CON EL NUEVO BOTÓN SÚPER LLAMATIVO -->
+            <!-- CABECERA -->
             <div class="flex justify-between items-center border-b-4 border-black pb-4 mb-6">
                 <h2 id="titulo-principal" class="text-3xl font-black uppercase text-[#E60000]">Reservar</h2>
-                <!-- 🔥 BOTÓN LLAMATIVO 🔥 -->
                 <button id="btn-cambiar-vista" onclick="cambiarVista()" class="text-sm font-black bg-yellow-400 text-black px-4 py-2 rounded-lg border-2 border-black shadow-[4px_4px_0px_#000] active:translate-y-1 active:shadow-none uppercase transition">
                     Modificar Reserva
                 </button>
             </div>
 
-            <!-- VISTA 1: FORMULARIO DE RESERVA (INTOCABLE) -->
+            <!-- VISTA 1: FORMULARIO DE RESERVA -->
             <div id="vista-reservar" class="space-y-4 font-bold">
                 <div class="grid grid-cols-2 gap-4">
                     <div>
@@ -63,10 +62,10 @@
 
             <!-- VISTA 2: BUSCAR IDENTIFICADOR -->
             <div id="vista-modificar" class="hidden space-y-4 font-bold">
-                <p class="text-sm text-gray-600 mb-4">Introduce tu identificador de reserva <b>todo junto</b> (sin espacios):</p>
+                <p class="text-sm text-gray-600 mb-4">Introduce tu identificador de reserva <b>todo junto</b> (sin espacios ni tildes):</p>
                 
                 <div>
-                    <input type="text" id="mod-identificador" oninput="colorearTexto(this.value)" placeholder="PABLO600123456ABC" class="w-full border-2 border-black p-3 rounded focus:outline-none font-black uppercase text-center tracking-widest focus:border-[#E60000]">
+                    <input type="text" id="mod-identificador" oninput="colorearTexto(this.value)" placeholder="PABLOGOMEZ600123456ABC" class="w-full border-2 border-black p-3 rounded focus:outline-none font-black uppercase text-center tracking-widest focus:border-[#E60000]">
                 </div>
                 
                 <div class="bg-gray-100 p-3 rounded border-2 border-dashed border-gray-400 text-center text-xl font-black tracking-wider break-words min-h-[50px] flex items-center justify-center">
@@ -78,7 +77,7 @@
                 </button>
             </div>
 
-            <!-- VISTA 3: GESTIONAR (Cambiar hora o cancelar) -->
+            <!-- VISTA 3: GESTIONAR -->
             <div id="vista-gestion" class="hidden space-y-4 font-bold">
                 <div class="bg-gray-100 p-4 rounded border-2 border-black text-center mb-4">
                     <p class="text-sm text-gray-600 uppercase">Reserva Actual</p>
@@ -110,7 +109,7 @@
         </div>
     </main>
 
-    <!-- MODAL RESERVA HECHA (INTOCABLE) -->
+    <!-- MODAL RESERVA HECHA -->
     <div id="modal-identificador" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50">
         <div class="bg-white border-4 border-black p-6 md:p-8 rounded-xl max-w-md w-full text-center shadow-[8px_8px_0px_#E60000]">
             <h3 class="text-4xl font-black text-[#E60000] uppercase mb-2">¡Reserva Confirmada!</h3>
@@ -131,6 +130,12 @@
     <!-- BLOQUE 1: CÓDIGO VISUAL (NUNCA FALLA)      -->
     <!-- ========================================== -->
     <script>
+        // Función mágica que quita tildes, comas y espacios
+        function normalizarTexto(str) {
+            if(!str) return '';
+            return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+        }
+
         function actualizarHoras(idFecha, idHora) {
             const fechaInput = document.getElementById(idFecha);
             const selectHora = document.getElementById(idHora);
@@ -167,13 +172,13 @@
         actualizarHoras('input-fecha', 'input-hora');
 
         function colorearTexto(val) {
-            val = val.toUpperCase().replace(/\s+/g, '');
+            val = normalizarTexto(val);
             const preview = document.getElementById('preview-colores');
             if(val === "") {
                 preview.innerHTML = '<span class="text-gray-400 text-sm">Tu código se pintará aquí...</span>';
                 return;
             }
-            const regex = /^([A-ZÑÁÉÍÓÚ]*)([0-9]*)([A-ZÑÁÉÍÓÚ]*)$/;
+            const regex = /^([A-Z]*)([0-9]*)([A-Z]*)$/;
             const match = val.match(regex);
             if (match) {
                 preview.innerHTML = `<span class="text-red-600">${match[1]||''}</span><span class="text-blue-600">${match[2]||''}</span><span class="text-green-600">${match[3]||''}</span>`;
@@ -216,7 +221,6 @@
         let miReservaActual = null;
         let miZonaActual = null;
 
-        // ESTA FUNCIÓN NO SE HA TOCADO EN ABSOLUTO
         async function procesarReserva() {
             const fecha = document.getElementById('input-fecha').value;
             const hora = document.getElementById('input-hora').value;
@@ -230,32 +234,55 @@
             btn.innerHTML = 'Enviando...'; btn.disabled = true;
 
             const letrasAleatorias = Math.random().toString(36).substring(2, 5).toUpperCase();
-            const nombreLimpio = nombre.replace(/\s+/g, '').toUpperCase();
+            // Nombre limpio sin tildes ni espacios para el Identificador
+            const nombreLimpio = normalizarTexto(nombre);
             const identificadorCompleto = `${nombreLimpio}${telefono}${letrasAleatorias}`;
 
             try {
                 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+                // Mandamos Telegram primero para asegurar que tú lo recibes sí o sí
                 const msg = `🍔 *NUEVA RESERVA* 🍔\n👤 *Nombre:* ${nombre}\n📞 *Tlf:* ${telefono}\n📅 *Día:* ${fecha}\n⏰ *Hora:* ${hora}\n📍 *Zona:* ${zona}\n🔑 *ID:* ${identificadorCompleto}`;
-                await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: msg, parse_mode: 'Markdown' }) });
+                fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: msg, parse_mode: 'Markdown' }) });
 
-                const { data: mesasZona } = await supabase.from('mesas').select('id').eq('zona', zona);
-                if (mesasZona && mesasZona.length > 0) {
-                    const { data: reservasDia } = await supabase.from('reservas').select('mesa_id, hora_inicio').eq('fecha', fecha);
-                    const horaSol = new Date(`${fecha}T${hora}:00`);
-                    let mesaAsignada = mesasZona.find(m => {
-                        const reservasMesa = (reservasDia || []).filter(r => r.mesa_id === m.id);
-                        return !reservasMesa.some(r => Math.abs((horaSol - new Date(`${fecha}T${r.hora_inicio}`)) / 60000) < 150);
-                    });
+                // AHORA COMPROBAMOS BIEN LA BASE DE DATOS
+                const { data: mesasZona, error: errMesas } = await supabase.from('mesas').select('id').eq('zona', zona);
+                if (errMesas) throw errMesas;
 
-                    if (mesaAsignada) {
-                        await supabase.from('reservas').insert([{
-                            mesa_id: mesaAsignada.id, nombre_cliente: nombre, telefono_cliente: telefono, 
-                            fecha: fecha, hora_inicio: hora + ':00', codigo_secreto: letrasAleatorias
-                        }]);
-                    }
+                if (!mesasZona || mesasZona.length === 0) {
+                    alert("❌ No hay mesas creadas en esa zona en la Base de Datos.");
+                    btn.innerHTML = 'Confirmar Reserva'; btn.disabled = false; return;
                 }
 
+                const { data: reservasDia } = await supabase.from('reservas').select('mesa_id, hora_inicio').eq('fecha', fecha);
+                const horaSol = new Date(`${fecha}T${hora}:00`);
+                let mesaAsignada = mesasZona.find(m => {
+                    const reservasMesa = (reservasDia || []).filter(r => r.mesa_id === m.id);
+                    return !reservasMesa.some(r => Math.abs((horaSol - new Date(`${fecha}T${r.hora_inicio}`)) / 60000) < 150);
+                });
+
+                if (!mesaAsignada) {
+                    alert(`❌ Lo sentimos, no quedan mesas libres en ${zona} a esa hora.`);
+                    btn.innerHTML = 'Confirmar Reserva'; btn.disabled = false; return;
+                }
+
+                // INTENTAMOS GUARDAR CON COMPROBADOR DE ERRORES
+                const { error: insertError } = await supabase.from('reservas').insert([{
+                    mesa_id: mesaAsignada.id, 
+                    nombre_cliente: nombre, 
+                    telefono_cliente: telefono, 
+                    fecha: fecha, 
+                    hora_inicio: hora + ':00', 
+                    codigo_secreto: letrasAleatorias
+                }]);
+
+                if (insertError) {
+                    console.error("Fallo exacto de Supabase:", insertError);
+                    alert("❌ Fallo en la Base de Datos al guardar: " + insertError.message);
+                    btn.innerHTML = 'Confirmar Reserva'; btn.disabled = false; return;
+                }
+
+                // Si todo ha ido bien, mostramos el modal verde
                 document.getElementById('id-nombre').innerText = nombreLimpio;
                 document.getElementById('id-tel').innerText = telefono;
                 document.getElementById('id-letras').innerText = letrasAleatorias;
@@ -263,13 +290,16 @@
                 document.getElementById('modal-identificador').classList.remove('hidden');
 
             } catch (err) {
-                alert("❌ Error al guardar. Comprueba internet."); btn.innerHTML = 'Confirmar Reserva'; btn.disabled = false;
+                console.error(err);
+                alert("❌ Error de conexión al hacer la reserva."); 
+                btn.innerHTML = 'Confirmar Reserva'; btn.disabled = false;
             }
         }
 
-        // FUNCIÓN DE BÚSQUEDA MEJORADA CON PROTECCIÓN
+        // BUSCADOR A PRUEBA DE TILDES Y ESPACIOS
         async function buscarReserva() {
-            const inputVal = document.getElementById('mod-identificador').value.trim().toUpperCase();
+            // Quitamos tildes y espacios de lo que escribe el usuario
+            const inputVal = normalizarTexto(document.getElementById('mod-identificador').value);
             if(!inputVal) return alert("⚠️ Introduce tu identificador.");
             
             const btn = document.getElementById('btn-buscar');
@@ -278,21 +308,22 @@
             try {
                 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 
-                // Buscamos todas las reservas en Supabase
                 const { data: reservas, error: errorBD } = await supabase.from('reservas').select('*');
-                if(errorBD) throw errorBD; // Si falla la BD, nos avisa en vez de colgarse
+                if(errorBD) throw errorBD; // Si falla la BD, nos salta el error abajo
 
                 const { data: mesas } = await supabase.from('mesas').select('id, zona');
 
                 const reservaEncontrada = (reservas || []).find(r => {
-                    // Ponemos (|| '') para que no se cuelgue si alguna reserva antigua está rota
-                    const n = (r.nombre_cliente || '').replace(/\s+/g, '').toUpperCase();
-                    const idGenerado = `${n}${r.telefono_cliente || ''}${r.codigo_secreto || ''}`;
+                    // Quitamos tildes y espacios a los nombres de la BD para que coincida 100%
+                    const n = normalizarTexto(r.nombre_cliente);
+                    const tel = normalizarTexto(r.telefono_cliente);
+                    const sec = normalizarTexto(r.codigo_secreto);
+                    const idGenerado = `${n}${tel}${sec}`;
                     return idGenerado === inputVal;
                 });
 
                 if(!reservaEncontrada) {
-                    alert("❌ No hemos encontrado tu reserva. Haz una prueba: crea una NUEVA reserva ahora y busca ese código nuevo. Los códigos de antes de arreglar Supabase no existen.");
+                    alert("❌ No hemos encontrado tu reserva. Si el código no te funciona, es porque la base de datos rechazó tu reserva anterior.");
                     btn.innerHTML = 'Buscar mi reserva'; btn.disabled = false; return;
                 }
 
@@ -311,8 +342,8 @@
                 setTimeout(() => { document.getElementById('gest-hora').value = miReservaActual.hora_inicio.substring(0,5); }, 100);
 
             } catch (error) {
-                console.error(error);
-                alert("❌ Fallo conectando a Supabase. ¿Has ejecutado el código SQL que te pasé?");
+                console.error("Fallo al buscar:", error);
+                alert("❌ Fallo conectando a Supabase al buscar. " + (error.message || ""));
             }
             btn.innerHTML = 'Buscar mi reserva'; btn.disabled = false;
         }
