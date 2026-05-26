@@ -23,46 +23,90 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block mb-1">Día</label>
-                        <input type="date" id="input-fecha" class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]">
+                        <!-- Le hemos añadido "onchange" para que actualice las horas si cambia de día -->
+                        <input type="date" id="input-fecha" onchange="actualizarHoras()" required class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]">
                     </div>
                     <div>
                         <label class="block mb-1">Hora</label>
                         <!-- DESPLEGABLE DE HORAS -->
-                        <select id="input-hora" class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]"></select>
+                        <select id="input-hora" required class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]"></select>
                     </div>
                 </div>
 
-                <!-- CÓDIGO A PRUEBA DE BOMBAS PARA LAS HORAS -->
+                <!-- CÓDIGO INTELIGENTE DE HORAS -->
                 <script>
-                    const selectHora = document.getElementById('input-hora');
-                    let opcionesHTML = "";
-                    for(let h = 8; h <= 22; h++) {
-                        let hora = h < 10 ? '0' + h : h; 
-                        opcionesHTML += `<option value="${hora}:00">${hora}:00</option>`;
-                        opcionesHTML += `<option value="${hora}:15">${hora}:15</option>`;
-                        opcionesHTML += `<option value="${hora}:30">${hora}:30</option>`;
-                        opcionesHTML += `<option value="${hora}:45">${hora}:45</option>`;
+                    function actualizarHoras() {
+                        const fechaInput = document.getElementById('input-fecha');
+                        const selectHora = document.getElementById('input-hora');
+                        
+                        // Sacamos la fecha y hora de ahora mismo
+                        const ahora = new Date();
+                        const year = ahora.getFullYear();
+                        const month = String(ahora.getMonth() + 1).padStart(2, '0');
+                        const day = String(ahora.getDate()).padStart(2, '0');
+                        const hoyIso = `${year}-${month}-${day}`;
+                        
+                        // 1. Bloqueamos el calendario para que no puedan elegir días en el pasado
+                        fechaInput.min = hoyIso;
+
+                        // 2. Si entra por primera vez, le ponemos la fecha de hoy por defecto
+                        if (!fechaInput.value) {
+                            fechaInput.value = hoyIso;
+                        }
+
+                        const fechaSeleccionada = fechaInput.value;
+                        let esHoy = (fechaSeleccionada === hoyIso);
+                        let opcionesHTML = "";
+
+                        // Generamos las horas
+                        for(let h = 8; h <= 23; h++) {
+                            let minutosPosibles = (h === 23) ? ['00'] : ['00', '15', '30', '45'];
+                            
+                            for(let m of minutosPosibles) {
+                                // Convertimos a minutos para saber si la hora ya ha pasado hoy
+                                let minutosOpcion = (h * 60) + parseInt(m);
+                                let minutosAhora = (ahora.getHours() * 60) + ahora.getMinutes();
+
+                                // Si el cliente elige "hoy" y esa hora ya es del pasado, la ocultamos (no se pinta)
+                                if (esHoy && minutosOpcion <= minutosAhora) {
+                                    continue;
+                                }
+
+                                // Si no ha pasado (o es para mañana), la añadimos al desplegable
+                                let horaFormateada = h < 10 ? '0' + h : h; 
+                                opcionesHTML += `<option value="${horaFormateada}:${m}">${horaFormateada}:${m}</option>`;
+                            }
+                        }
+
+                        // Si ya es muy tarde y el bar ha cerrado, mostramos este mensaje
+                        if (opcionesHTML === "") {
+                            opcionesHTML = `<option value="">Cerrado por hoy / Sin horas</option>`;
+                        }
+
+                        selectHora.innerHTML = opcionesHTML;
                     }
-                    opcionesHTML += `<option value="23:00">23:00</option>`;
-                    selectHora.innerHTML = opcionesHTML;
-                    document.getElementById('input-fecha').valueAsDate = new Date(); 
+
+                    // Ejecutamos la función nada más abrir la página
+                    actualizarHoras();
                 </script>
 
                 <div>
                     <label class="block mb-1">¿Dónde quieres comer?</label>
-                    <select id="input-zona" class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]">
+                    <select id="input-zona" required class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]">
                         <option value="Interior">Interior</option>
                         <option value="Terraza">Terraza</option>
                     </select>
                 </div>
 
                 <div>
-                    <label class="block mb-1">Nombre Completo</label>
-                    <input type="text" id="input-nombre" placeholder="Ej: Pablo Gómez" class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]">
+                    <label class="block mb-1">Nombre Completo <span class="text-red-500">*</span></label>
+                    <!-- Campo obligatorio (required) con placeholder -->
+                    <input type="text" id="input-nombre" placeholder="Ej: Pablo Gómez" required class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]">
                 </div>
                 <div>
-                    <label class="block mb-1">Teléfono</label>
-                    <input type="tel" id="input-telefono" placeholder="Ej: 600123456" class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]">
+                    <label class="block mb-1">Teléfono <span class="text-red-500">*</span></label>
+                    <!-- Campo obligatorio (required) con placeholder -->
+                    <input type="tel" id="input-telefono" placeholder="Ej: 600123456" required class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]">
                 </div>
 
                 <button onclick="procesarReserva()" id="btn-reservar" class="mt-8 w-full bg-black text-white font-black text-2xl py-4 rounded border-2 border-black uppercase active:scale-95 transition">
@@ -78,11 +122,12 @@
             const fecha = document.getElementById('input-fecha').value;
             const hora = document.getElementById('input-hora').value;
             const zona = document.getElementById('input-zona').value;
-            const nombre = document.getElementById('input-nombre').value;
-            const telefono = document.getElementById('input-telefono').value;
+            const nombre = document.getElementById('input-nombre').value.trim();
+            const telefono = document.getElementById('input-telefono').value.trim();
 
+            // DOBLE SEGURIDAD: Comprobamos si los campos están vacíos antes de enviarlo
             if(!fecha || !hora || !nombre || !telefono) {
-                return alert("⚠️ Rellena todos los campos, por favor.");
+                return alert("⚠️ Por favor, rellena tu Nombre y Teléfono obligatoriamente.");
             }
 
             const btn = document.getElementById('btn-reservar');
@@ -103,7 +148,6 @@
                 });
 
                 // 2. INTENTAR GUARDAR EN SUPABASE EN SEGUNDO PLANO
-                // (Si tu Base de datos no está creada aún, esto no romperá la web)
                 try {
                     const SUPABASE_URL = 'https://ncxrtpmndkmgegtkasub.supabase.co'; 
                     const SUPABASE_ANON_KEY = 'sb_publishable_05L29aUddOhhWdeH7qZiqg_3Xq_EKjC';
@@ -148,7 +192,7 @@
 
             } catch (err) {
                 console.error("Error General:", err);
-                alert("❌ No tienes conexión a internet para mandar el Telegram.");
+                alert("❌ Fallo de conexión. Comprueba tu internet.");
                 btn.innerHTML = 'Confirmar Reserva';
                 btn.disabled = false;
             }
