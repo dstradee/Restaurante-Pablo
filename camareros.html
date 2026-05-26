@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camareros - Restaurante de Pablo</title>
+    <title>Control de Aforo - Camareros</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Librería de Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-900 text-white min-h-screen font-sans select-none">
+<body class="bg-gray-900 text-white min-h-screen">
 
     <header class="bg-black py-4 px-6 flex justify-between items-center border-b-2 border-gray-700">
         <h1 class="text-2xl font-black uppercase text-yellow-400">Control de Aforo</h1>
@@ -92,7 +94,7 @@
             const mesaLibre = mesasCache.find(m => m.zona === zona && m.estado_actual === 'libre');
             if(!mesaLibre) return alert(`⚠️ ¡Aforo lleno! No quedan mesas libres en ${zona}.`);
             
-            // Actualizar local instantáneo para que no haya delay visual
+            // Actualizar local instantáneo
             mesaLibre.estado_actual = 'ocupada';
             actualizarContadores();
 
@@ -113,10 +115,10 @@
             await supabase.from('mesas').update({ estado_actual: 'libre' }).eq('id', mesaOcupada.id);
         }
 
-        // 5. Escuchar cambios de la web de reservas en tiempo real
+        // 5. Escuchar cambios de la web de reservas en tiempo real (Supabase Realtime)
         supabase.channel('camareros-vivo')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas' }, () => {
-              cargarDatos(); // Recargar si alguien reserva por internet
+              cargarDatos(); 
           })
           .subscribe();
 
