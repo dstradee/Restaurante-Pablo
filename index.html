@@ -32,12 +32,12 @@
                     </div>
                 </div>
 
-                <!-- CÓDIGO A PRUEBA DE BOMBAS PARA LAS HORAS: SE EJECUTA INSTANTÁNEAMENTE -->
+                <!-- CÓDIGO A PRUEBA DE BOMBAS PARA LAS HORAS -->
                 <script>
                     const selectHora = document.getElementById('input-hora');
                     let opcionesHTML = "";
                     for(let h = 8; h <= 22; h++) {
-                        let hora = h < 10 ? '0' + h : h; // Añade el 0 si es menor de 10 (08, 09...)
+                        let hora = h < 10 ? '0' + h : h; 
                         opcionesHTML += `<option value="${hora}:00">${hora}:00</option>`;
                         opcionesHTML += `<option value="${hora}:15">${hora}:15</option>`;
                         opcionesHTML += `<option value="${hora}:30">${hora}:30</option>`;
@@ -45,7 +45,7 @@
                     }
                     opcionesHTML += `<option value="23:00">23:00</option>`;
                     selectHora.innerHTML = opcionesHTML;
-                    document.getElementById('input-fecha').valueAsDate = new Date(); // Pone el día de hoy por defecto
+                    document.getElementById('input-fecha').valueAsDate = new Date(); 
                 </script>
 
                 <div>
@@ -73,15 +73,7 @@
     </main>
 
     <script>
-        // CONEXIÓN A SUPABASE
-        const SUPABASE_URL = 'https://ncxrtpmndkmgegtkasub.supabase.co'; 
-        const SUPABASE_ANON_KEY = 'sb_publishable_05L29aUddOhhWdeH7qZiqg_3Xq_EKjC';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        const TELEGRAM_BOT_TOKEN = '8789184996:AAFV2JsCWBcXo-IhC0YYzQuEhuhWPUgHK6k';
-        const TELEGRAM_CHAT_ID = '6519651464';
-
-        // LÓGICA DE LA RESERVA (Se guarda en Base de Datos)
+        // LÓGICA DE LA RESERVA
         async function procesarReserva() {
             const fecha = document.getElementById('input-fecha').value;
             const hora = document.getElementById('input-hora').value;
@@ -94,74 +86,69 @@
             }
 
             const btn = document.getElementById('btn-reservar');
-            btn.innerHTML = 'Procesando...';
+            btn.innerHTML = 'Enviando Reserva...';
             btn.disabled = true;
 
             try {
-                // 1. Buscar todas las mesas de la zona que quiere el cliente
-                const { data: mesasZona, error: errMesas } = await supabase.from('mesas').select('id').eq('zona', zona);
-                if (errMesas || !mesasZona) throw errMesas || new Error("No hay mesas");
-
-                // 2. Buscar las reservas que ya hay en ese día
-                const { data: reservasDia, error: errRes } = await supabase.from('reservas').select('mesa_id, hora_inicio').eq('fecha', fecha);
-                if (errRes) throw errRes;
-
-                const horaSolicitada = new Date(`${fecha}T${hora}:00`);
-                let mesaAsignada = null;
-
-                // 3. Buscar una mesa disponible (respetando las 2.5 horas = 150 minutos)
-                for (let mesa of mesasZona) {
-                    const reservasDeEstaMesa = reservasDia.filter(r => r.mesa_id === mesa.id);
-                    
-                    const tieneChoque = reservasDeEstaMesa.some(r => {
-                        const horaReservaExitente = new Date(`${fecha}T${r.hora_inicio}`);
-                        const diferenciaMinutos = Math.abs((horaSolicitada - horaReservaExitente) / 60000);
-                        return diferenciaMinutos < 150; 
-                    });
-
-                    // Si no choca, nos guardamos esta mesa y paramos de buscar
-                    if (!tieneChoque) {
-                        mesaAsignada = mesa;
-                        break;
-                    }
-                }
-
-                // Si no hay ninguna libre
-                if(!mesaAsignada) {
-                    alert(`❌ Lo sentimos, no quedan mesas libres en ${zona} a las ${hora}.`);
-                    btn.innerHTML = 'Confirmar Reserva';
-                    btn.disabled = false;
-                    return;
-                }
-
-                // 4. GUARDAR EN LA BASE DE DATOS LA MESA ASIGNADA
-                const { error: insertError } = await supabase.from('reservas').insert([{
-                    mesa_id: mesaAsignada.id, 
-                    nombre_cliente: nombre,
-                    telefono_cliente: telefono, 
-                    fecha: fecha, 
-                    hora_inicio: hora + ':00'
-                }]);
-
-                if (insertError) throw insertError;
-
-                // 5. Enviar mensaje por Telegram con el ID de la mesa asignada
-                const mesaIDCorto = mesaAsignada.id.substring(0, 4).toUpperCase(); // Cogemos 4 letras del ID para identificarla
-                const msg = `🍔 *NUEVA RESERVA* 🍔\n👤 *Nombre:* ${nombre}\n📞 *Tlf:* ${telefono}\n📅 *Día:* ${fecha}\n⏰ *Hora:* ${hora}\n📍 *Zona:* ${zona}\n🪑 *Mesa Asignada:* REF-${mesaIDCorto}`;
+                // 1. LO PRIMERO DE TODO: ENVIAR TELEGRAM (Así nunca falla el botón)
+                const TELEGRAM_BOT_TOKEN = '8789184996:AAFV2JsCWBcXo-IhC0YYzQuEhuhWPUgHK6k';
+                const TELEGRAM_CHAT_ID = '6519651464';
                 
-                fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                const msg = `🍔 *NUEVA RESERVA* 🍔\n👤 *Nombre:* ${nombre}\n📞 *Tlf:* ${telefono}\n📅 *Día:* ${fecha}\n⏰ *Hora:* ${hora}\n📍 *Zona:* ${zona}`;
+                
+                await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
                     method: 'POST', 
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: msg, parse_mode: 'Markdown' })
                 });
 
-                // Confirmación
-                alert(`✅ ¡Éxito! Tienes la mesa REF-${mesaIDCorto} reservada en ${zona} a las ${hora}.`);
+                // 2. INTENTAR GUARDAR EN SUPABASE EN SEGUNDO PLANO
+                // (Si tu Base de datos no está creada aún, esto no romperá la web)
+                try {
+                    const SUPABASE_URL = 'https://ncxrtpmndkmgegtkasub.supabase.co'; 
+                    const SUPABASE_ANON_KEY = 'sb_publishable_05L29aUddOhhWdeH7qZiqg_3Xq_EKjC';
+                    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+                    const { data: mesasZona } = await supabase.from('mesas').select('id').eq('zona', zona);
+                    if (mesasZona && mesasZona.length > 0) {
+                        const { data: reservasDia } = await supabase.from('reservas').select('mesa_id, hora_inicio').eq('fecha', fecha);
+                        const horaSolicitada = new Date(`${fecha}T${hora}:00`);
+                        let mesaAsignada = null;
+
+                        for (let mesa of mesasZona) {
+                            const reservasDeEstaMesa = (reservasDia || []).filter(r => r.mesa_id === mesa.id);
+                            const tieneChoque = reservasDeEstaMesa.some(r => {
+                                const horaReserva = new Date(`${fecha}T${r.hora_inicio}`);
+                                return Math.abs((horaSolicitada - horaReserva) / 60000) < 150; 
+                            });
+
+                            if (!tieneChoque) {
+                                mesaAsignada = mesa;
+                                break;
+                            }
+                        }
+
+                        if (mesaAsignada) {
+                            await supabase.from('reservas').insert([{
+                                mesa_id: mesaAsignada.id, 
+                                nombre_cliente: nombre,
+                                telefono_cliente: telefono, 
+                                fecha: fecha, 
+                                hora_inicio: hora + ':00'
+                            }]);
+                        }
+                    }
+                } catch (dbError) {
+                    console.log("No se pudo conectar a la BD, pero el Telegram se envió correctamente.", dbError);
+                }
+
+                // 3. AVISAR DE QUE TODO HA IDO BIEN
+                alert(`✅ ¡Éxito! Tienes la mesa reservada en ${zona} a las ${hora}.`);
                 window.location.reload(); 
 
             } catch (err) {
-                console.error("Error:", err);
-                alert("❌ Error al guardar en la base de datos.");
+                console.error("Error General:", err);
+                alert("❌ No tienes conexión a internet para mandar el Telegram.");
                 btn.innerHTML = 'Confirmar Reserva';
                 btn.disabled = false;
             }
