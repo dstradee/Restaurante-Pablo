@@ -70,7 +70,8 @@
         <div id="vista-reservas" class="hidden space-y-4">
             <div class="bg-gray-800 p-4 rounded-xl border-2 border-gray-600">
                 <label class="block text-gray-400 font-bold mb-2 uppercase text-sm">Selecciona el día:</label>
-                <input type="date" id="input-fecha-lista" onchange="descargarListaReservas()" class="w-full bg-gray-900 border-2 border-gray-500 p-4 rounded text-white font-bold focus:outline-none text-xl">
+                <!-- AQUÍ EL CAMBIO ESTÉTICO: p-2 en móvil, md:p-4 en PC, y tamaño de texto ajustado -->
+                <input type="date" id="input-fecha-lista" onchange="descargarListaReservas()" class="w-full bg-gray-900 border-2 border-gray-500 p-2 md:p-4 rounded text-white font-bold focus:outline-none text-lg md:text-xl">
             </div>
 
             <div id="caja-reservas" class="space-y-4 mt-4">
@@ -101,7 +102,6 @@
                     document.getElementById('input-fecha-lista').value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                 }
                 
-                // Si la función de la BD existe, la llamamos
                 if(typeof descargarListaReservas === "function") descargarListaReservas();
             }
         }
@@ -117,12 +117,10 @@
         let todasLasMesas = [];
         let reservasDeHoy = [];
 
-        // DESCARGAR MESAS Y ACTUALIZAR NÚMEROS
         async function actualizarDatos() {
             try {
                 document.getElementById('estado').innerText = "Actualizando...";
                 
-                // Nos conectamos a Supabase SOLO DENTRO DE LA FUNCIÓN
                 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
                 const d = new Date();
@@ -146,7 +144,6 @@
             }
         }
 
-        // MATEMÁTICAS SIMPLES
         function pintarNumerosAforo(ahora, hoyIso) {
             let intLibres = 0; let intTotal = 0;
             let terLibres = 0; let terTotal = 0;
@@ -172,7 +169,6 @@
             document.getElementById('num-terraza').innerHTML = `<span class="${terLibres===0 ? 'text-red-500' : 'text-white'}">${terLibres}</span> <span class="text-4xl text-gray-500">/ ${terTotal}</span>`;
         }
 
-        // BOTÓN OCUPAR
         async function ocupar(zona) {
             const btn = (zona === 'Interior') ? document.getElementById('btn-oc-int') : document.getElementById('btn-oc-ter');
             const textoPrevio = btn.innerText;
@@ -207,7 +203,6 @@
             btn.innerText = textoPrevio;
         }
 
-        // BOTÓN LIBERAR
         async function liberar(zona) {
             const btn = (zona === 'Interior') ? document.getElementById('btn-lib-int') : document.getElementById('btn-lib-ter');
             const textoPrevio = btn.innerText;
@@ -231,7 +226,6 @@
             btn.innerText = textoPrevio;
         }
 
-        // DESCARGAR LISTA RESERVAS
         async function descargarListaReservas() {
             const fechaElegida = document.getElementById('input-fecha-lista').value;
             const caja = document.getElementById('caja-reservas');
@@ -279,13 +273,7 @@
             }
         }
 
-        // ==========================================
-        // ARRANQUE SEGURO
-        // ==========================================
-        // Refrescamos automáticamente cada 5 segundos para que siempre esté actualizado, sin usar canales complejos que se cuelgan.
         setInterval(actualizarDatos, 5000);
-
-        // Arrancamos la primera vez con un poco de retraso (0.5s) para asegurar que el móvil ha cargado el internet
         setTimeout(actualizarDatos, 500);
 
     </script>
