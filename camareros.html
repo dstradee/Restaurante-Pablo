@@ -15,7 +15,7 @@
             <h1 class="text-2xl font-black uppercase text-yellow-400">Control de Local</h1>
             <div class="text-right leading-none">
                 <span id="reloj" class="text-white font-black text-xl block">00:00</span>
-                <span id="estado-conexion" class="text-yellow-400 font-bold text-xs uppercase tracking-widest">● Esperando Red...</span>
+                <span id="estado-conexion" class="text-yellow-400 font-bold text-xs uppercase tracking-widest">● Conectando...</span>
             </div>
         </div>
 
@@ -81,7 +81,6 @@
                 <input type="date" id="filtro-fecha" onchange="cargarListaReservas()" class="w-full bg-gray-900 border-2 border-gray-600 p-3 rounded text-white font-bold focus:outline-none focus:border-yellow-400 text-lg">
             </div>
 
-            <!-- Aquí se imprimirán las reservas ordenadas -->
             <div id="contenedor-lista-reservas" class="space-y-4">
                 <p class="text-center text-gray-500 font-bold">Cargando reservas...</p>
             </div>
@@ -107,66 +106,60 @@
             if (pestaña === 'aforo') {
                 vAforo.classList.remove('hidden');
                 vReservas.classList.add('hidden');
-                
                 tAforo.className = "flex-1 bg-yellow-400 text-black font-black py-2 rounded uppercase text-sm border-2 border-transparent transition";
                 tReservas.className = "flex-1 bg-gray-800 text-gray-400 font-bold py-2 rounded uppercase text-sm border-2 border-gray-700 transition";
             } else {
                 vAforo.classList.add('hidden');
                 vReservas.classList.remove('hidden');
-                
                 tReservas.className = "flex-1 bg-yellow-400 text-black font-black py-2 rounded uppercase text-sm border-2 border-transparent transition";
                 tAforo.className = "flex-1 bg-gray-800 text-gray-400 font-bold py-2 rounded uppercase text-sm border-2 border-gray-700 transition";
-                
-                cargarListaReservas(); // Cargar la lista al entrar a la pestaña
+                cargarListaReservas(); 
             }
         }
 
-        // --- INICIALIZACIÓN SEGURA DE SUPABASE ---
+        // --- CONFIGURACIÓN SUPABASE ---
         const SUPABASE_URL = 'https://ncxrtpmndkmgegtkasub.supabase.co'; 
         const SUPABASE_ANON_KEY = 'sb_publishable_05L29aUddOhhWdeH7qZiqg_3Xq_EKjC';
-        let supabase = null;
+        let supabase;
         let mesasCache = [];
         let reservasHoyCache = [];
 
-        // Este código arranca todo SOLO cuando detecta que la librería se ha descargado de internet
-        document.addEventListener('DOMContentLoaded', () => {
-            const chequeo = setInterval(() => {
-                if (window.supabase) {
-                    clearInterval(chequeo);
-                    iniciarApp();
-                }
-            }, 200); // Comprueba cada 0.2 segundos si ya hay internet
-        });
-
-        function iniciarApp() {
+        // --- ARRANQUE DIRECTO (SIN ESPERAS) ---
+        try {
+            if (!window.supabase) throw new Error("No carga la librería");
+            
             supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             
-            // Ponemos el input de fecha a hoy
+            // Ponemos el día de hoy por defecto en el calendario
             const hoy = new Date();
             document.getElementById('filtro-fecha').value = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
 
+            // Cargamos datos INMEDIATAMENTE
             cargarDatosAforo();
-            
-            // Suscripción al tiempo real
-            supabase.channel('camareros-canal-seguro')
+
+            // Refresco cada 30 segundos
+            setInterval(cargarDatosAforo, 30000);
+
+            // Escuchar cambios en vivo
+            supabase.channel('camareros-vivo')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas' }, payload => { cargarDatosAforo(); })
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'reservas' }, payload => { cargarDatosAforo(); cargarListaReservas(); })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'reservas' }, payload => { cargarDatosAforo(); if(!document.getElementById('vista-reservas').classList.contains('hidden')) cargarListaReservas(); })
                 .subscribe();
 
-            // Refresco de seguridad cada 60 segundos por si se desconecta
-            setInterval(cargarDatosAforo, 60000);
+        } catch (err) {
+            document.getElementById('estado-conexion').innerHTML = '● ERROR LIBRERÍA';
+            document.getElementById('estado-conexion').className = 'text-red-500 font-bold text-xs uppercase tracking-widest';
+            alert("⚠️ Error crítico: Tu navegador está bloqueando la conexión. Comprueba que tienes internet.");
         }
 
         // ==========================================
-        // LÓGICA DE LA VISTA DE AFORO
+        // FUNCIONES DE BASE DE DATOS
         // ==========================================
         async function cargarDatosAforo() {
-            if(!supabase) return;
             const estado = document.getElementById('estado-conexion');
             try {
-                estado.innerHTML = '● Conectando...';
-                estado.className = 'text-yellow-400 font-bold text-xs uppercase tracking-widest';
-
+                estado.innerHTML = '● Actualizando...';
+                
                 const ahora = new Date();
                 const hoyIso = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
 
@@ -181,9 +174,10 @@
 
                 actualizarPantallaAforo(ahora, hoyIso);
 
-                estado.innerHTML = '● EN LÍNEA';
+                estado.innerHTML = '● EN LÍNEA ✓';
                 estado.className = 'text-green-400 font-bold text-xs uppercase tracking-widest';
             } catch (error) {
+                console.error(error);
                 estado.innerHTML = '● SIN SEÑAL';
                 estado.className = 'text-red-500 font-bold text-xs uppercase tracking-widest';
             }
@@ -215,7 +209,12 @@
         }
 
         async function ocuparMesa(zona) {
-            if(!supabase) return;
+            if(!supabase) return alert("❌ Cargando base de datos, espera un segundo...");
+            
+            const btn = (zona === 'Interior') ? document.getElementById('btn-oc-int') : document.getElementById('btn-oc-ter');
+            const textoOriginal = btn.innerHTML;
+            btn.innerHTML = '⏳...';
+
             const ahora = new Date();
             const hoyIso = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
 
@@ -225,42 +224,54 @@
                 return !reservas.some(r => Math.abs((ahora - new Date(`${hoyIso}T${r.hora_inicio}`)) / 60000) < 150);
             });
 
-            if(!mesaOcupar) return alert(`⚠️ ¡No quedan mesas en ${zona}!`);
+            if(!mesaOcupar) {
+                btn.innerHTML = textoOriginal;
+                return alert(`⚠️ ¡Aforo lleno en ${zona}! Las mesas libres están bloqueadas para una reserva inminente.`);
+            }
 
             try {
                 await supabase.from('mesas').update({ estado_actual: 'ocupada' }).eq('id', mesaOcupar.id);
-                cargarDatosAforo();
-            } catch (err) {}
+                await cargarDatosAforo();
+            } catch (err) {
+                alert("❌ Error de red al ocupar.");
+            }
+            btn.innerHTML = textoOriginal;
         }
 
         async function liberarMesa(zona) {
-            if(!supabase) return;
+            if(!supabase) return alert("❌ Cargando base de datos, espera un segundo...");
+
+            const btn = (zona === 'Interior') ? document.getElementById('btn-lib-int') : document.getElementById('btn-lib-ter');
+            const textoOriginal = btn.innerHTML;
+            btn.innerHTML = '⏳...';
+
             const mesaLib = mesasCache.find(mesa => mesa.zona === zona && mesa.estado_actual === 'ocupada');
-            if(!mesaLib) return alert(`⚠️ No hay mesas ocupadas físicamente en ${zona}.`);
+            if(!mesaLib) {
+                btn.innerHTML = textoOriginal;
+                return alert(`⚠️ Todas las mesas de ${zona} ya están vacías.`);
+            }
 
             try {
                 await supabase.from('mesas').update({ estado_actual: 'libre' }).eq('id', mesaLib.id);
-                cargarDatosAforo();
-            } catch (err) {}
+                await cargarDatosAforo();
+            } catch (err) {
+                alert("❌ Error de red al liberar.");
+            }
+            btn.innerHTML = textoOriginal;
         }
 
-        // ==========================================
-        // LÓGICA DE LA VISTA DE RESERVAS POR DÍA
-        // ==========================================
         async function cargarListaReservas() {
-            if(!supabase) return;
             const fechaSelec = document.getElementById('filtro-fecha').value;
             const contenedor = document.getElementById('contenedor-lista-reservas');
 
-            contenedor.innerHTML = '<p class="text-center text-yellow-400 font-bold mt-4">Buscando en la base de datos...</p>';
+            contenedor.innerHTML = '<p class="text-center text-yellow-400 font-bold mt-4">Descargando reservas...</p>';
 
             try {
-                // Buscamos todas las reservas de ese día, y pedimos que nos traiga también la ZONA de la mesa
                 const { data: reservasDia, error } = await supabase
                     .from('reservas')
                     .select('hora_inicio, nombre_cliente, telefono_cliente, mesas(zona)')
                     .eq('fecha', fechaSelec)
-                    .order('hora_inicio', { ascending: true }); // Ordenadas de mañana a noche
+                    .order('hora_inicio', { ascending: true });
 
                 if (error) throw error;
 
@@ -269,14 +280,12 @@
                     return;
                 }
 
-                // Agrupamos por horas y pintamos el HTML
                 let html = "";
                 let horaActual = "";
 
                 reservasDia.forEach(res => {
-                    let horaCorta = res.hora_inicio.substring(0, 5); // Ej: 14:30
+                    let horaCorta = res.hora_inicio.substring(0, 5);
                     
-                    // Si es una hora nueva, ponemos un separador gigante
                     if (horaCorta !== horaActual) {
                         html += `<div class="mt-8 mb-2 border-b-2 border-gray-600 pb-1">
                                     <h3 class="text-3xl font-black text-yellow-400">${horaCorta}</h3>
@@ -284,7 +293,6 @@
                         horaActual = horaCorta;
                     }
 
-                    // Tarjeta de la reserva
                     let zona = res.mesas ? res.mesas.zona : "Sin Zona";
                     let colorZona = zona === 'Interior' ? 'text-blue-400' : 'text-orange-400';
 
@@ -305,7 +313,6 @@
                 contenedor.innerHTML = html;
 
             } catch (err) {
-                console.error(err);
                 contenedor.innerHTML = '<p class="text-center text-red-500 font-bold mt-4">❌ Error al cargar las reservas. Revisa tu internet.</p>';
             }
         }
