@@ -59,4 +59,69 @@
         async function cargarDatos() {
             try {
                 const { data, error } = await supabase.from('mesas').select('*');
-                if (error) throw
+                if (error) throw error;
+                
+                mesasCache = data || [];
+                actualizarContadores();
+                
+                document.getElementById('estado-conexion').innerHTML = '● Vivo (Conectado)';
+                document.getElementById('estado-conexion').className = 'text-green-400 font-bold text-sm';
+            } catch (error) {
+                console.error("Fallo al cargar datos:", error);
+                document.getElementById('contador-interior').innerHTML = `<span class="text-red-500 text-3xl">Error BD</span>`;
+                document.getElementById('contador-terraza').innerHTML = `<span class="text-red-500 text-3xl">Error BD</span>`;
+                document.getElementById('estado-conexion').innerHTML = '● Error de Red';
+                document.getElementById('estado-conexion').className = 'text-red-500 font-bold text-sm';
+            }
+        }
+
+        // 2. Pintar los números en pantalla
+        function actualizarContadores() {
+            const interiorLibres = mesasCache.filter(m => m.zona === 'Interior' && m.estado_actual === 'libre').length;
+            const interiorTotal = mesasCache.filter(m => m.zona === 'Interior').length;
+            
+            const terrazaLibres = mesasCache.filter(m => m.zona === 'Terraza' && m.estado_actual === 'libre').length;
+            const terrazaTotal = mesasCache.filter(m => m.zona === 'Terraza').length;
+
+            document.getElementById('contador-interior').innerHTML = `<span class="text-white">${interiorLibres}</span> <span class="text-2xl text-gray-400">/ ${interiorTotal} libres</span>`;
+            document.getElementById('contador-terraza').innerHTML = `<span class="text-white">${terrazaLibres}</span> <span class="text-2xl text-gray-400">/ ${terrazaTotal} libres</span>`;
+        }
+
+        // 3. El camarero sienta a alguien (Resta una mesa libre)
+        async function ocuparMesa(zona) {
+            const mesaLibre = mesasCache.find(m => m.zona === zona && m.estado_actual === 'libre');
+            if(!mesaLibre) return alert(`⚠️ ¡Aforo lleno! No quedan mesas libres en ${zona}.`);
+            
+            // Actualizar local instantáneo para que no haya delay visual
+            mesaLibre.estado_actual = 'ocupada';
+            actualizarContadores();
+
+            // Guardar en BD
+            await supabase.from('mesas').update({ estado_actual: 'ocupada' }).eq('id', mesaLibre.id);
+        }
+
+        // 4. El camarero limpia una mesa (Suma una mesa libre)
+        async function liberarMesa(zona) {
+            const mesaOcupada = mesasCache.find(m => m.zona === zona && m.estado_actual !== 'libre');
+            if(!mesaOcupada) return alert(`⚠️ ¡Todas las mesas de ${zona} ya están vacías!`);
+
+            // Actualizar local instantáneo
+            mesaOcupada.estado_actual = 'libre';
+            actualizarContadores();
+
+            // Guardar en BD
+            await supabase.from('mesas').update({ estado_actual: 'libre' }).eq('id', mesaOcupada.id);
+        }
+
+        // 5. Escuchar cambios de la web de reservas en tiempo real
+        supabase.channel('camareros-vivo')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas' }, () => {
+              cargarDatos(); // Recargar si alguien reserva por internet
+          })
+          .subscribe();
+
+        // Arrancar la app
+        cargarDatos();
+    </script>
+</body>
+</html>
