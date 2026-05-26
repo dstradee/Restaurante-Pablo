@@ -4,21 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Camareros - Restaurante</title>
-    <!-- Tailwind CSS para que se vea bien -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Librería oficial de Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-900 text-white min-h-screen font-sans pb-20">
 
-    <!-- CABECERA -->
     <header class="bg-black py-4 px-4 border-b-2 border-gray-700 sticky top-0 z-50">
         <div class="flex justify-between items-center mb-4">
             <h1 class="text-2xl font-black uppercase text-yellow-400">Panel Camareros</h1>
             <span id="estado" class="text-yellow-400 font-bold text-sm uppercase">Cargando...</span>
         </div>
         
-        <!-- PESTAÑAS -->
         <div class="flex gap-2">
             <button onclick="verPestaña('aforo')" id="tab-aforo" class="flex-1 bg-yellow-400 text-black font-black py-3 rounded uppercase text-sm">
                 Aforo en Vivo
@@ -31,12 +27,8 @@
 
     <main class="p-4 max-w-4xl mx-auto mt-2">
         
-        <!-- ========================================== -->
-        <!-- PESTAÑA 1: AFORO Y BOTONES RÁPIDOS         -->
-        <!-- ========================================== -->
         <div id="vista-aforo" class="space-y-6 block">
-            
-            <!-- TARJETA INTERIOR -->
+            <!-- INTERIOR -->
             <div class="bg-gray-800 p-6 rounded-2xl border-2 border-gray-600 text-center">
                 <h2 class="text-3xl font-black text-blue-400 uppercase mb-2">Interior</h2>
                 <p class="text-gray-400 font-bold text-sm uppercase mb-4">Mesas Libres Ahora Mismo</p>
@@ -46,16 +38,16 @@
                 </div>
                 
                 <div class="grid grid-cols-2 gap-4">
-                    <button onclick="ocupar('Interior')" class="bg-red-600 active:bg-red-800 text-white text-xl font-black py-6 rounded-xl uppercase shadow-lg">
+                    <button onclick="ocupar('Interior')" id="btn-oc-int" class="bg-red-600 active:bg-red-800 text-white text-xl font-black py-6 rounded-xl uppercase shadow-lg transition">
                         Ocupar
                     </button>
-                    <button onclick="liberar('Interior')" class="bg-green-600 active:bg-green-800 text-white text-xl font-black py-6 rounded-xl uppercase shadow-lg">
+                    <button onclick="liberar('Interior')" id="btn-lib-int" class="bg-green-600 active:bg-green-800 text-white text-xl font-black py-6 rounded-xl uppercase shadow-lg transition">
                         Liberar
                     </button>
                 </div>
             </div>
 
-            <!-- TARJETA TERRAZA -->
+            <!-- TERRAZA -->
             <div class="bg-gray-800 p-6 rounded-2xl border-2 border-gray-600 text-center">
                 <h2 class="text-3xl font-black text-orange-400 uppercase mb-2">Terraza</h2>
                 <p class="text-gray-400 font-bold text-sm uppercase mb-4">Mesas Libres Ahora Mismo</p>
@@ -65,85 +57,96 @@
                 </div>
                 
                 <div class="grid grid-cols-2 gap-4">
-                    <button onclick="ocupar('Terraza')" class="bg-red-600 active:bg-red-800 text-white text-xl font-black py-6 rounded-xl uppercase shadow-lg">
+                    <button onclick="ocupar('Terraza')" id="btn-oc-ter" class="bg-red-600 active:bg-red-800 text-white text-xl font-black py-6 rounded-xl uppercase shadow-lg transition">
                         Ocupar
                     </button>
-                    <button onclick="liberar('Terraza')" class="bg-green-600 active:bg-green-800 text-white text-xl font-black py-6 rounded-xl uppercase shadow-lg">
+                    <button onclick="liberar('Terraza')" id="btn-lib-ter" class="bg-green-600 active:bg-green-800 text-white text-xl font-black py-6 rounded-xl uppercase shadow-lg transition">
                         Liberar
                     </button>
                 </div>
             </div>
-
         </div>
 
-        <!-- ========================================== -->
-        <!-- PESTAÑA 2: LISTADO DE RESERVAS INTERACTIVO -->
-        <!-- ========================================== -->
         <div id="vista-reservas" class="hidden space-y-4">
-            
             <div class="bg-gray-800 p-4 rounded-xl border-2 border-gray-600">
                 <label class="block text-gray-400 font-bold mb-2 uppercase text-sm">Selecciona el día:</label>
-                <!-- Al cambiar el día, descarga las reservas de ese día -->
                 <input type="date" id="input-fecha-lista" onchange="descargarListaReservas()" class="w-full bg-gray-900 border-2 border-gray-500 p-4 rounded text-white font-bold focus:outline-none text-xl">
             </div>
 
             <div id="caja-reservas" class="space-y-4 mt-4">
-                <p class="text-center font-bold text-gray-500">Cargando...</p>
+                <p class="text-center font-bold text-gray-500">Haz clic en el calendario para buscar reservas...</p>
             </div>
-
         </div>
 
     </main>
 
+    <!-- ========================================== -->
+    <!-- BLOQUE 1: CÓDIGO VISUAL (NUNCA FALLA)      -->
+    <!-- ========================================== -->
     <script>
-        // ==========================================
-        // 1. CONFIGURACIÓN Y VARIABLES GLOBALES
-        // ==========================================
+        function verPestaña(cual) {
+            if (cual === 'aforo') {
+                document.getElementById('vista-aforo').classList.remove('hidden');
+                document.getElementById('vista-reservas').classList.add('hidden');
+                document.getElementById('tab-aforo').className = "flex-1 bg-yellow-400 text-black font-black py-3 rounded uppercase text-sm";
+                document.getElementById('tab-reservas').className = "flex-1 bg-gray-800 text-gray-400 font-bold py-3 rounded uppercase text-sm border-2 border-gray-700";
+            } else {
+                document.getElementById('vista-aforo').classList.add('hidden');
+                document.getElementById('vista-reservas').classList.remove('hidden');
+                document.getElementById('tab-reservas').className = "flex-1 bg-yellow-400 text-black font-black py-3 rounded uppercase text-sm";
+                document.getElementById('tab-aforo').className = "flex-1 bg-gray-800 text-gray-400 font-bold py-3 rounded uppercase text-sm border-2 border-gray-700";
+                
+                if(!document.getElementById('input-fecha-lista').value) {
+                    const d = new Date();
+                    document.getElementById('input-fecha-lista').value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                }
+                
+                // Si la función de la BD existe, la llamamos
+                if(typeof descargarListaReservas === "function") descargarListaReservas();
+            }
+        }
+    </script>
+
+    <!-- ========================================== -->
+    <!-- BLOQUE 2: BASE DE DATOS (AISLADO TOTALMENTE)-->
+    <!-- ========================================== -->
+    <script>
         const SUPABASE_URL = 'https://ncxrtpmndkmgegtkasub.supabase.co'; 
         const SUPABASE_ANON_KEY = 'sb_publishable_05L29aUddOhhWdeH7qZiqg_3Xq_EKjC';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
         let todasLasMesas = [];
         let reservasDeHoy = [];
 
-        // ==========================================
-        // 2. FUNCIÓN PRINCIPAL QUE DESCARGA TODO
-        // ==========================================
+        // DESCARGAR MESAS Y ACTUALIZAR NÚMEROS
         async function actualizarDatos() {
             try {
                 document.getElementById('estado').innerText = "Actualizando...";
-                document.getElementById('estado').className = "text-yellow-400 font-bold text-sm uppercase";
+                
+                // Nos conectamos a Supabase SOLO DENTRO DE LA FUNCIÓN
+                const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-                // Obtenemos la fecha de hoy real (Año-Mes-Día)
                 const d = new Date();
                 const hoy = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-                // Pedimos TODAS las mesas a Supabase
                 const resMesas = await supabase.from('mesas').select('*');
                 if (resMesas.error) throw resMesas.error;
-                todasLasMesas = resMesas.data;
+                todasLasMesas = resMesas.data || [];
 
-                // Pedimos TODAS las reservas DE HOY a Supabase
                 const resReservas = await supabase.from('reservas').select('*').eq('fecha', hoy);
                 if (resReservas.error) throw resReservas.error;
-                reservasDeHoy = resReservas.data;
+                reservasDeHoy = resReservas.data || [];
 
-                // Calculamos los números y los pintamos en pantalla
                 pintarNumerosAforo(d, hoy);
 
                 document.getElementById('estado').innerText = "✓ ONLINE";
                 document.getElementById('estado').className = "text-green-400 font-bold text-sm uppercase";
-
             } catch (error) {
-                console.error("Fallo:", error);
-                document.getElementById('estado').innerText = "❌ ERROR DE RED";
+                document.getElementById('estado').innerText = "❌ RECONECTANDO...";
                 document.getElementById('estado').className = "text-red-500 font-bold text-sm uppercase";
             }
         }
 
-        // ==========================================
-        // 3. MATEMÁTICAS: CALCULAR MESAS LIBRES
-        // ==========================================
+        // MATEMÁTICAS SIMPLES
         function pintarNumerosAforo(ahora, hoyIso) {
             let intLibres = 0; let intTotal = 0;
             let terLibres = 0; let terTotal = 0;
@@ -152,97 +155,96 @@
                 if (mesa.zona === 'Interior') intTotal++;
                 if (mesa.zona === 'Terraza') terTotal++;
 
-                // ¿Está libre físicamente?
                 let esLibreFisica = (mesa.estado_actual === 'libre');
-
-                // ¿Alguien de internet la tiene reservada para AHORA MISMO? (margen 150 mins)
                 let chocanConInternet = reservasDeHoy.some(r => {
                     if (r.mesa_id !== mesa.id) return false;
                     let horaDeReserva = new Date(`${hoyIso}T${r.hora_inicio}`);
-                    let diferenciaMins = Math.abs((ahora - horaDeReserva) / 60000);
-                    return diferenciaMins < 150; 
+                    return Math.abs((ahora - horaDeReserva) / 60000) < 150; 
                 });
 
-                // Si está vacía en el local Y no está reservada en internet... ¡Suma 1 disponible!
                 if (esLibreFisica && !chocanConInternet) {
                     if (mesa.zona === 'Interior') intLibres++;
                     if (mesa.zona === 'Terraza') terLibres++;
                 }
             });
 
-            // Pintamos el HTML
             document.getElementById('num-interior').innerHTML = `<span class="${intLibres===0 ? 'text-red-500' : 'text-white'}">${intLibres}</span> <span class="text-4xl text-gray-500">/ ${intTotal}</span>`;
             document.getElementById('num-terraza').innerHTML = `<span class="${terLibres===0 ? 'text-red-500' : 'text-white'}">${terLibres}</span> <span class="text-4xl text-gray-500">/ ${terTotal}</span>`;
         }
 
-        // ==========================================
-        // 4. BOTONES DEL CAMARERO
-        // ==========================================
+        // BOTÓN OCUPAR
         async function ocupar(zona) {
-            const ahora = new Date();
-            const hoyIso = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
+            const btn = (zona === 'Interior') ? document.getElementById('btn-oc-int') : document.getElementById('btn-oc-ter');
+            const textoPrevio = btn.innerText;
+            btn.innerText = "⏳...";
 
-            // Buscamos una mesa libre en esa zona que NO esté reservada por internet
-            let mesaParaSentar = todasLasMesas.find(mesa => {
-                if (mesa.zona !== zona || mesa.estado_actual !== 'libre') return false;
-                
-                let chocan = reservasDeHoy.some(r => {
-                    if (r.mesa_id !== mesa.id) return false;
-                    let horaDeReserva = new Date(`${hoyIso}T${r.hora_inicio}`);
-                    return Math.abs((ahora - horaDeReserva) / 60000) < 150; 
+            try {
+                const ahora = new Date();
+                const hoyIso = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
+
+                let mesaParaSentar = todasLasMesas.find(mesa => {
+                    if (mesa.zona !== zona || mesa.estado_actual !== 'libre') return false;
+                    let chocan = reservasDeHoy.some(r => {
+                        if (r.mesa_id !== mesa.id) return false;
+                        let horaDeReserva = new Date(`${hoyIso}T${r.hora_inicio}`);
+                        return Math.abs((ahora - horaDeReserva) / 60000) < 150; 
+                    });
+                    return !chocan; 
                 });
-                return !chocan; // Devolvemos la mesa si NO choca
-            });
 
-            if (!mesaParaSentar) {
-                return alert(`❌ ¡No quedan mesas libres en ${zona}! Las que ves están reservadas por internet y la gente está a punto de llegar.`);
-            }
+                if (!mesaParaSentar) {
+                    btn.innerText = textoPrevio;
+                    return alert(`❌ ¡No quedan mesas libres en ${zona}! Las que ves están reservadas por internet.`);
+                }
 
-            try {
-                document.getElementById('estado').innerText = "Enviando...";
-                // Guardamos en Supabase
+                const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 await supabase.from('mesas').update({ estado_actual: 'ocupada' }).eq('id', mesaParaSentar.id);
-                // Recargamos los datos para que el número baje en pantalla
+                
                 await actualizarDatos();
             } catch (error) {
-                alert("❌ Fallo al conectarse a la Base de Datos.");
+                alert("❌ Fallo de red. Inténtalo de nuevo.");
             }
+            btn.innerText = textoPrevio;
         }
 
+        // BOTÓN LIBERAR
         async function liberar(zona) {
-            // Buscamos cualquier mesa de esa zona que esté "ocupada"
-            let mesaParaLimpiar = todasLasMesas.find(mesa => mesa.zona === zona && mesa.estado_actual === 'ocupada');
-            
-            if (!mesaParaLimpiar) {
-                return alert(`⚠️ Ya están todas las mesas de ${zona} vacías.`);
-            }
+            const btn = (zona === 'Interior') ? document.getElementById('btn-lib-int') : document.getElementById('btn-lib-ter');
+            const textoPrevio = btn.innerText;
+            btn.innerText = "⏳...";
 
             try {
-                document.getElementById('estado').innerText = "Enviando...";
-                // Guardamos en Supabase
+                let mesaParaLimpiar = todasLasMesas.find(mesa => mesa.zona === zona && mesa.estado_actual === 'ocupada');
+                
+                if (!mesaParaLimpiar) {
+                    btn.innerText = textoPrevio;
+                    return alert(`⚠️ Ya están todas las mesas de ${zona} vacías.`);
+                }
+
+                const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 await supabase.from('mesas').update({ estado_actual: 'libre' }).eq('id', mesaParaLimpiar.id);
-                // Recargamos los datos para que el número suba en pantalla
+                
                 await actualizarDatos();
             } catch (error) {
-                alert("❌ Fallo al conectarse a la Base de Datos.");
+                alert("❌ Fallo de red. Inténtalo de nuevo.");
             }
+            btn.innerText = textoPrevio;
         }
 
-        // ==========================================
-        // 5. PESTAÑA DEL LISTADO DE RESERVAS
-        // ==========================================
+        // DESCARGAR LISTA RESERVAS
         async function descargarListaReservas() {
             const fechaElegida = document.getElementById('input-fecha-lista').value;
             const caja = document.getElementById('caja-reservas');
-            caja.innerHTML = '<p class="text-center font-bold text-yellow-400">Descargando base de datos...</p>';
+            caja.innerHTML = '<p class="text-center font-bold text-yellow-400">Descargando reservas...</p>';
 
             try {
-                // Pedimos las reservas de ESE DÍA y además la zona de la mesa
+                const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                
                 const { data: reservasDato, error } = await supabase
                     .from('reservas')
                     .select('hora_inicio, nombre_cliente, telefono_cliente, codigo_secreto, mesas(zona)')
                     .eq('fecha', fechaElegida)
-                    .order('hora_inicio', { ascending: true }); // Ordenadas por hora
+                    .order('hora_inicio', { ascending: true });
 
                 if (error) throw error;
 
@@ -273,40 +275,18 @@
                 caja.innerHTML = contenidoHTML;
 
             } catch (error) {
-                caja.innerHTML = '<p class="text-center font-bold text-red-500">❌ Error al descargar las reservas.</p>';
+                caja.innerHTML = '<p class="text-center font-bold text-red-500">❌ Error de conexión al descargar reservas.</p>';
             }
         }
 
         // ==========================================
-        // 6. NAVEGACIÓN Y ARRANQUE INICIAL
+        // ARRANQUE SEGURO
         // ==========================================
-        function verPestaña(cual) {
-            if (cual === 'aforo') {
-                document.getElementById('vista-aforo').classList.remove('hidden');
-                document.getElementById('vista-reservas').classList.add('hidden');
-                document.getElementById('tab-aforo').className = "flex-1 bg-yellow-400 text-black font-black py-3 rounded uppercase text-sm";
-                document.getElementById('tab-reservas').className = "flex-1 bg-gray-800 text-gray-400 font-bold py-3 rounded uppercase text-sm border-2 border-gray-700";
-            } else {
-                document.getElementById('vista-aforo').classList.add('hidden');
-                document.getElementById('vista-reservas').classList.remove('hidden');
-                document.getElementById('tab-reservas').className = "flex-1 bg-yellow-400 text-black font-black py-3 rounded uppercase text-sm";
-                document.getElementById('tab-aforo').className = "flex-1 bg-gray-800 text-gray-400 font-bold py-3 rounded uppercase text-sm border-2 border-gray-700";
-                
-                // Si la fecha está vacía, ponemos hoy por defecto
-                if(!document.getElementById('input-fecha-lista').value) {
-                    const d = new Date();
-                    document.getElementById('input-fecha-lista').value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                }
-                descargarListaReservas();
-            }
-        }
+        // Refrescamos automáticamente cada 5 segundos para que siempre esté actualizado, sin usar canales complejos que se cuelgan.
+        setInterval(actualizarDatos, 5000);
 
-        // ARRANCAR EL SISTEMA DE INMEDIATO
-        actualizarDatos();
-
-        // En lugar de Websockets (que fallan en GitHub/móviles), refrescamos la app entera cada 10 segundos silenciosamente.
-        // Esto GARANTIZA que el camarero siempre ve la verdad, sin bloqueos de red.
-        setInterval(actualizarDatos, 10000);
+        // Arrancamos la primera vez con un poco de retraso (0.5s) para asegurar que el móvil ha cargado el internet
+        setTimeout(actualizarDatos, 500);
 
     </script>
 </body>
