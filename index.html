@@ -3,18 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reservas - Restaurante</title>
+    <title>Reserva - Restaurante de Pablo</title>
+    <!-- Tailwind CSS (Para los estilos) -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Librería de Supabase (Para conectar con la Base de Datos) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-[#FFF9E6] min-h-screen pb-10 text-gray-900 font-sans">
+<body class="bg-gray-100">
 
     <header class="bg-[#E60000] text-white py-6 text-center border-b-8 border-black">
         <h1 class="text-5xl font-black uppercase italic tracking-wider">Restaurante de Pablo</h1>
         <p class="mt-2 font-bold uppercase">Reserva tu mesa al instante</p>
     </header>
 
-    <main class="max-w-xl mx-auto mt-8 px-4">
+    <main class="max-w-xl mx-auto mt-8 px-4 pb-10">
         <div class="bg-white p-6 md:p-8 rounded-xl border-4 border-black shadow-[6px_6px_0px_#E60000]">
             <h2 class="text-3xl font-black uppercase mb-6 text-[#E60000] border-b-4 border-black pb-2 text-center">Tu Reserva</h2>
             <div class="space-y-4 font-bold">
@@ -56,6 +58,7 @@
     </main>
 
     <script>
+        // ¡OJO! Asegúrate de que esta Anon Key es la correcta. Normalmente empieza por "eyJ..."
         const SUPABASE_URL = 'https://ncxrtpmndkmgegtkasub.supabase.co'; 
         const SUPABASE_ANON_KEY = 'sb_publishable_05L29aUddOhhWdeH7qZiqg_3Xq_EKjC';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -63,7 +66,7 @@
         const TELEGRAM_BOT_TOKEN = '8789184996:AAFV2JsCWBcXo-IhC0YYzQuEhuhWPUgHK6k';
         const TELEGRAM_CHAT_ID = '6519651464';
 
-        // 1. GENERAR HORAS (Instantáneo, sin esperas ni window.onload)
+        // 1. GENERAR HORAS (Instantáneo)
         function inicializarFormulario() {
             const selectHora = document.getElementById('input-hora');
             let opcionesHTML = "";
@@ -72,6 +75,8 @@
             selectHora.innerHTML = opcionesHTML;
             document.getElementById('input-fecha').valueAsDate = new Date();
         }
+        
+        // Ejecutamos al cargar
         inicializarFormulario();
 
         async function procesarReserva() {
@@ -89,7 +94,8 @@
 
             try {
                 // Sacamos el restaurante
-                const { data: rest } = await supabase.from('restaurantes').select('id').limit(1).single();
+                const { data: rest, error: errorRest } = await supabase.from('restaurantes').select('id').limit(1).single();
+                if (errorRest) throw errorRest;
                 
                 // Buscamos las mesas de esa zona
                 const { data: mesasZona } = await supabase.from('mesas').select('*').eq('zona', zona);
@@ -105,7 +111,7 @@
                     return diferenciaMinutos < 150; // 2.5 horas = 150 mins
                 }).map(r => r.mesa_id);
 
-                // Elegimos una mesa libre
+                // Elegimos una mesa libre que no esté en idsMesasOcupadas
                 const mesaLibre = mesasZona.find(m => !idsMesasOcupadas.includes(m.id));
 
                 if(!mesaLibre) {
@@ -117,8 +123,13 @@
 
                 // Guardamos la reserva
                 await supabase.from('reservas').insert([{
-                    restaurante_id: rest.id, mesa_id: mesaLibre.id, nombre_cliente: nombre,
-                    telefono_cliente: telefono, fecha: fecha, hora_inicio: hora + ':00', estado: 'pendiente'
+                    restaurante_id: rest.id, 
+                    mesa_id: mesaLibre.id, 
+                    nombre_cliente: nombre,
+                    telefono_cliente: telefono, 
+                    fecha: fecha, 
+                    hora_inicio: hora + ':00', 
+                    estado: 'pendiente'
                 }]);
 
                 // Bloqueamos la mesa para que el camarero la vea ocupada (Si la reserva es inminente de hoy)
@@ -126,7 +137,7 @@
                 if(fecha === ahora.toISOString().split('T')[0]) {
                     const difActual = (horaSolicitadaDate - ahora) / 60000;
                     if(difActual > -150 && difActual <= 150) {
-                        await supabase.from('mesas').update({ estado_actual: 'reservada' }).eq('id', mesaLibre.id);
+                        await supabase.from('mesas').update({ estado_actual: 'ocupada' }).eq('id', mesaLibre.id);
                     }
                 }
 
