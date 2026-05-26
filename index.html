@@ -53,7 +53,7 @@
                 </div>
                 <div>
                     <label class="block mb-1">Teléfono <span class="text-red-500">*</span></label>
-                    <!-- ¡NUEVO! Solo permite números -->
+                    <!-- Solo permite números -->
                     <input type="tel" id="input-telefono" placeholder="Ej: 600123456" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]">
                 </div>
 
@@ -67,7 +67,6 @@
                 <p class="text-sm text-gray-600 mb-4">Introduce tu identificador de reserva <b>todo junto</b> (sin espacios):</p>
                 
                 <div>
-                    <!-- El usuario escribe todo en esta caja -->
                     <input type="text" id="mod-identificador" oninput="colorearTexto(this.value)" placeholder="PABLO600123456ABC" class="w-full border-2 border-black p-3 rounded focus:outline-none font-black uppercase text-center tracking-widest focus:border-[#E60000]">
                 </div>
                 
@@ -119,7 +118,6 @@
             <h3 class="text-4xl font-black text-[#E60000] uppercase mb-2">¡Reserva Confirmada!</h3>
             <p class="font-bold text-lg mb-4 leading-tight">Guarda este identificador, hazle una captura de pantalla para poder modificar o cancelar tu reserva:</p>
             
-            <!-- EL CÓDIGO CON SUS COLORES Y TODO JUNTO -->
             <div class="text-2xl md:text-3xl font-black bg-gray-100 p-4 rounded border-4 border-black tracking-wider break-words mb-6 flex justify-center">
                 <span id="id-nombre" class="text-red-600"></span><span id="id-tel" class="text-blue-600"></span><span id="id-letras" class="text-green-600"></span>
             </div>
@@ -130,18 +128,11 @@
         </div>
     </div>
 
+
+    <!-- ========================================== -->
+    <!-- BLOQUE 1: CÓDIGO VISUAL (NUNCA FALLA)      -->
+    <!-- ========================================== -->
     <script>
-        const SUPABASE_URL = 'https://ncxrtpmndkmgegtkasub.supabase.co'; 
-        const SUPABASE_ANON_KEY = 'sb_publishable_05L29aUddOhhWdeH7qZiqg_3Xq_EKjC';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        
-        const TELEGRAM_BOT_TOKEN = '8789184996:AAFV2JsCWBcXo-IhC0YYzQuEhuhWPUgHK6k';
-        const TELEGRAM_CHAT_ID = '6519651464';
-
-        let miReservaActual = null;
-        let miZonaActual = null;
-
-        // 1. GENERADOR DE HORAS (Sirve para ambas pantallas)
         function actualizarHoras(idFecha, idHora) {
             const fechaInput = document.getElementById(idFecha);
             const selectHora = document.getElementById(idHora);
@@ -174,9 +165,10 @@
             if (opcionesHTML === "") opcionesHTML = `<option value="">Cerrado / Sin horas</option>`;
             selectHora.innerHTML = opcionesHTML;
         }
+
+        // SE EJECUTA INMEDIATAMENTE AL CARGAR LA PÁGINA
         actualizarHoras('input-fecha', 'input-hora');
 
-        // 2. SEPARAR EL CÓDIGO POR COLORES EN TIEMPO REAL
         function colorearTexto(val) {
             val = val.toUpperCase().replace(/\s+/g, '');
             const preview = document.getElementById('preview-colores');
@@ -184,10 +176,8 @@
                 preview.innerHTML = '<span class="text-gray-400 text-sm">Tu código se pintará aquí...</span>';
                 return;
             }
-            // Expresión para separar: Letras (Nombre) + Números (Teléfono) + Letras (Código Secreto)
             const regex = /^([A-ZÑÁÉÍÓÚ]*)([0-9]*)([A-ZÑÁÉÍÓÚ]*)$/;
             const match = val.match(regex);
-
             if (match) {
                 preview.innerHTML = `<span class="text-red-600">${match[1]||''}</span><span class="text-blue-600">${match[2]||''}</span><span class="text-green-600">${match[3]||''}</span>`;
             } else {
@@ -195,7 +185,6 @@
             }
         }
 
-        // 3. NAVEGACIÓN ENTRE VISTAS
         function cambiarVista() {
             const vRes = document.getElementById('vista-reservar');
             const vMod = document.getElementById('vista-modificar');
@@ -204,13 +193,11 @@
             const btn = document.getElementById('btn-cambiar-vista');
 
             if (!vRes.classList.contains('hidden')) {
-                // Ir a Buscar Reserva
                 vRes.classList.add('hidden');
                 vMod.classList.remove('hidden');
                 titulo.innerText = "Tu Reserva";
                 btn.innerText = "Volver a Reservar";
             } else {
-                // Volver a inicio
                 vRes.classList.remove('hidden');
                 vMod.classList.add('hidden');
                 vGest.classList.add('hidden');
@@ -218,8 +205,20 @@
                 btn.innerText = "Modificar Reserva";
             }
         }
+    </script>
 
-        // 4. CREAR RESERVA (Original)
+    <!-- ========================================== -->
+    <!-- BLOQUE 2: BASE DE DATOS Y TELEGRAM         -->
+    <!-- ========================================== -->
+    <script>
+        const SUPABASE_URL = 'https://ncxrtpmndkmgegtkasub.supabase.co'; 
+        const SUPABASE_ANON_KEY = 'sb_publishable_05L29aUddOhhWdeH7qZiqg_3Xq_EKjC';
+        const TELEGRAM_BOT_TOKEN = '8789184996:AAFV2JsCWBcXo-IhC0YYzQuEhuhWPUgHK6k';
+        const TELEGRAM_CHAT_ID = '6519651464';
+
+        let miReservaActual = null;
+        let miZonaActual = null;
+
         async function procesarReserva() {
             const fecha = document.getElementById('input-fecha').value;
             const hora = document.getElementById('input-hora').value;
@@ -237,6 +236,9 @@
             const identificadorCompleto = `${nombreLimpio}${telefono}${letrasAleatorias}`;
 
             try {
+                // Instanciamos Supabase solo en el momento de darle al botón
+                const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
                 // Telegram primero
                 const msg = `🍔 *NUEVA RESERVA* 🍔\n👤 *Nombre:* ${nombre}\n📞 *Tlf:* ${telefono}\n📅 *Día:* ${fecha}\n⏰ *Hora:* ${hora}\n📍 *Zona:* ${zona}\n🔑 *ID:* ${identificadorCompleto}`;
                 await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: msg, parse_mode: 'Markdown' }) });
@@ -259,7 +261,7 @@
                     }
                 }
 
-                // Mostrar Modal
+                // Mostrar Modal Visual
                 document.getElementById('id-nombre').innerText = nombreLimpio;
                 document.getElementById('id-tel').innerText = telefono;
                 document.getElementById('id-letras').innerText = letrasAleatorias;
@@ -267,11 +269,10 @@
                 document.getElementById('modal-identificador').classList.remove('hidden');
 
             } catch (err) {
-                alert("❌ Fallo de conexión."); btn.innerHTML = 'Confirmar Reserva'; btn.disabled = false;
+                alert("❌ Error al guardar. Comprueba internet."); btn.innerHTML = 'Confirmar Reserva'; btn.disabled = false;
             }
         }
 
-        // 5. BUSCAR RESERVA EN SUPABASE
         async function buscarReserva() {
             const inputVal = document.getElementById('mod-identificador').value.trim().toUpperCase();
             if(!inputVal) return alert("⚠️ Introduce tu identificador.");
@@ -280,11 +281,10 @@
             btn.innerHTML = 'Buscando...'; btn.disabled = true;
 
             try {
-                // Descargamos reservas y mesas
+                const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 const { data: reservas } = await supabase.from('reservas').select('*');
                 const { data: mesas } = await supabase.from('mesas').select('id, zona');
 
-                // Buscamos coincidencia juntando los 3 datos
                 const reservaEncontrada = (reservas || []).find(r => {
                     const n = r.nombre_cliente.replace(/\s+/g, '').toUpperCase();
                     const idGenerado = `${n}${r.telefono_cliente}${r.codigo_secreto}`;
@@ -293,11 +293,9 @@
 
                 if(!reservaEncontrada) {
                     alert("❌ No se encontró ninguna reserva. Revisa que esté escrito exactamente igual.");
-                    btn.innerHTML = 'Buscar mi reserva'; btn.disabled = false;
-                    return;
+                    btn.innerHTML = 'Buscar mi reserva'; btn.disabled = false; return;
                 }
 
-                // Si la encuentra, sacamos su zona y mostramos panel de control
                 miReservaActual = reservaEncontrada;
                 const mesaAsignada = mesas.find(m => m.id === miReservaActual.mesa_id);
                 miZonaActual = mesaAsignada ? mesaAsignada.zona : 'Sin Zona';
@@ -308,10 +306,8 @@
                 document.getElementById('vista-modificar').classList.add('hidden');
                 document.getElementById('vista-gestion').classList.remove('hidden');
                 
-                // Ponemos su fecha actual en los selectores
                 document.getElementById('gest-fecha').value = miReservaActual.fecha;
                 actualizarHoras('gest-fecha', 'gest-hora');
-                // Intentamos seleccionar su hora
                 setTimeout(() => { document.getElementById('gest-hora').value = miReservaActual.hora_inicio.substring(0,5); }, 100);
 
             } catch (error) {
@@ -320,7 +316,6 @@
             btn.innerHTML = 'Buscar mi reserva'; btn.disabled = false;
         }
 
-        // 6. ACTUALIZAR RESERVA
         async function actualizarReserva() {
             const nuevaFecha = document.getElementById('gest-fecha').value;
             const nuevaHora = document.getElementById('gest-hora').value;
@@ -330,12 +325,11 @@
             btn.innerHTML = 'Guardando...'; btn.disabled = true;
 
             try {
+                const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 const { data: mesasZona } = await supabase.from('mesas').select('id').eq('zona', miZonaActual);
                 const { data: reservasDia } = await supabase.from('reservas').select('id, mesa_id, hora_inicio').eq('fecha', nuevaFecha);
                 
                 const horaSol = new Date(`${nuevaFecha}T${nuevaHora}:00`);
-                
-                // Buscamos mesa, EXCLUYENDO la reserva actual para no chocar con nosotros mismos
                 let nuevaMesa = mesasZona.find(m => {
                     const reservasMesa = (reservasDia || []).filter(r => r.mesa_id === m.id && r.id !== miReservaActual.id);
                     return !reservasMesa.some(r => Math.abs((horaSol - new Date(`${nuevaFecha}T${r.hora_inicio}`)) / 60000) < 150);
@@ -346,10 +340,8 @@
                     btn.innerHTML = 'Guardar Cambios'; btn.disabled = false; return;
                 }
 
-                // Guardamos cambios
                 await supabase.from('reservas').update({ fecha: nuevaFecha, hora_inicio: nuevaHora + ':00', mesa_id: nuevaMesa.id }).eq('id', miReservaActual.id);
 
-                // Avisar Telegram
                 const msg = `✏️ *RESERVA MODIFICADA* ✏️\n👤 ${miReservaActual.nombre_cliente}\n🔄 *NUEVA FECHA:* ${nuevaFecha} a las ${nuevaHora}`;
                 fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: msg, parse_mode: 'Markdown' }) });
 
@@ -360,7 +352,6 @@
             }
         }
 
-        // 7. CANCELAR RESERVA
         async function cancelarReserva() {
             if(!confirm("⚠️ ¿Estás seguro de que quieres cancelar tu reserva de forma permanente?")) return;
 
@@ -368,9 +359,9 @@
             btn.innerHTML = 'Cancelando...'; btn.disabled = true;
 
             try {
+                const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 await supabase.from('reservas').delete().eq('id', miReservaActual.id);
                 
-                // Avisar Telegram
                 const msg = `❌ *RESERVA CANCELADA* ❌\n👤 ${miReservaActual.nombre_cliente}\n📞 ${miReservaActual.telefono_cliente}\n📅 Iba a ser el ${miReservaActual.fecha}`;
                 fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: msg, parse_mode: 'Markdown' }) });
 
