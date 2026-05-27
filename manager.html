@@ -3,433 +3,398 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manager - Restaurante de Pablo</title>
+    <title>Reserva - Restaurante de Pablo</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body { margin: 0; padding: 0; background-color: #f3f4f6; }
-        ::-webkit-scrollbar { width: 0px; }
-        .fade-in { animation: fadeIn 0.5s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    </style>
+    <style> body { margin: 0; padding: 0; border-top: 1px solid transparent; } </style>
 </head>
-<body class="text-gray-900 font-sans pb-10">
+<body class="bg-gray-100 relative">
 
-    <!-- ========================================== -->
-    <!-- PANTALLA DE LOGIN                          -->
-    <!-- ========================================== -->
-    <div id="pantalla-login" class="min-h-screen flex items-center justify-center bg-[#0f172a] px-4 fixed inset-0 z-[100]">
-        <div class="bg-[#1e293b] p-8 md:p-10 rounded-2xl border-2 border-gray-700 shadow-2xl w-full max-w-md text-center relative overflow-hidden">
-            <div class="absolute -right-10 -top-10 text-gray-700 opacity-10 text-9xl">🔒</div>
-            <h1 class="text-4xl font-black uppercase text-white tracking-wider mb-2 relative z-10">Manager <span class="text-[#E60000]">Pro</span></h1>
-            <p class="text-gray-400 font-bold mb-8 uppercase tracking-widest text-xs relative z-10">Acceso Restringido</p>
+    <header class="bg-[#E60000] text-white py-6 px-4 text-center border-b-8 border-black">
+        <h1 class="text-4xl md:text-5xl font-black uppercase italic tracking-wider">Restaurante de Pablo</h1>
+        <p class="mt-2 font-bold uppercase text-sm md:text-base">Reserva tu mesa al instante</p>
+    </header>
+
+    <main class="max-w-xl mx-auto pt-8 px-4 pb-10">
+        <div class="bg-white p-6 md:p-8 rounded-xl border-4 border-black shadow-[6px_6px_0px_#E60000]">
             
-            <div class="space-y-4 relative z-10">
-                <input type="email" id="login-user" placeholder="Correo Electrónico" class="w-full bg-[#0f172a] border-2 border-gray-600 p-4 rounded text-white font-bold focus:outline-none focus:border-[#E60000] transition text-center">
-                
-                <input type="password" id="login-pass" placeholder="Contraseña" class="w-full bg-[#0f172a] border-2 border-gray-600 p-4 rounded text-white font-bold focus:outline-none focus:border-[#E60000] transition text-center tracking-widest">
-                
-                <button onclick="intentarLogin()" id="btn-login" class="w-full bg-[#E60000] hover:bg-red-700 text-white font-black text-xl py-4 mt-4 rounded shadow-lg active:scale-95 transition uppercase">
-                    Entrar al Panel
+            <div class="flex flex-col md:flex-row justify-between md:items-center border-b-4 border-black pb-4 mb-6 gap-4 md:gap-0">
+                <h2 id="titulo-principal" class="text-3xl font-black uppercase text-[#E60000] text-center md:text-left">Reservar</h2>
+                <button id="btn-cambiar-vista" onclick="cambiarVista()" class="text-sm font-black bg-yellow-400 text-black px-4 py-3 md:py-2 rounded-lg border-2 border-black shadow-[4px_4px_0px_#000] active:translate-y-1 active:shadow-none uppercase transition w-full md:w-auto">
+                    Modificar Reserva
                 </button>
             </div>
-        </div>
-    </div>
 
-    <!-- ========================================== -->
-    <!-- PANEL PRINCIPAL                            -->
-    <!-- ========================================== -->
-    <div id="pantalla-dashboard" class="hidden fade-in">
-        <header class="bg-black py-5 px-6 border-b-4 border-[#E60000] sticky top-0 z-50 shadow-xl">
-            <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between md:items-center gap-4">
+            <!-- VISTA SUSPENDIDA (Kill Switch) -->
+            <div id="vista-suspendida" class="hidden text-center py-10 space-y-4">
+                <div class="text-6xl mb-4">🚧</div>
+                <h3 class="text-2xl font-black uppercase text-gray-800">Servicio No Disponible</h3>
+                <p class="text-gray-600 font-bold">El sistema de reservas online se encuentra temporalmente desactivado para este local.</p>
+            </div>
+
+            <!-- VISTA 1: FORMULARIO -->
+            <div id="vista-reservar" class="space-y-4 font-bold">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block mb-1">Día</label>
+                        <input type="date" id="input-fecha" onchange="actualizarHoras('input-fecha', 'input-hora')" required class="w-full border-2 border-black p-1 px-2 h-10 text-sm md:h-auto md:text-base md:p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]">
+                    </div>
+                    <div>
+                        <label class="block mb-1">Hora</label>
+                        <select id="input-hora" required class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]"></select>
+                    </div>
+                </div>
+
                 <div>
-                    <h1 class="text-3xl font-black uppercase text-white tracking-wider">Manager <span class="text-[#E60000]">Pro</span></h1>
-                    <p class="text-gray-400 text-sm font-bold uppercase tracking-widest mt-1">Panel de Dirección</p>
+                    <label class="block mb-1">¿Dónde quieres comer?</label>
+                    <select id="input-zona" required class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]">
+                        <option value="Interior">Interior</option>
+                        <option value="Terraza">Terraza</option>
+                    </select>
                 </div>
-                
-                <div class="flex gap-2 overflow-x-auto pb-2 md:pb-0">
-                    <button onclick="cambiarPestaña('analitica')" id="tab-analitica" class="bg-white text-black px-4 py-2 rounded font-black uppercase text-xs md:text-sm shadow whitespace-nowrap">📊 Analítica</button>
-                    <button onclick="cambiarPestaña('mesas')" id="tab-mesas" class="bg-gray-800 text-gray-300 hover:text-white px-4 py-2 rounded font-black uppercase text-xs md:text-sm whitespace-nowrap transition">🪑 Mesas</button>
-                    <button onclick="cambiarPestaña('bloqueos')" id="tab-bloqueos" class="bg-gray-800 text-gray-300 hover:text-white px-4 py-2 rounded font-black uppercase text-xs md:text-sm whitespace-nowrap transition">🔒 Bloqueos</button>
-                    <button onclick="cambiarPestaña('exportar')" id="tab-exportar" class="bg-gray-800 text-gray-300 hover:text-white px-4 py-2 rounded font-black uppercase text-xs md:text-sm whitespace-nowrap transition">📁 Exportar</button>
-                </div>
-            </div>
-        </header>
 
-        <main class="max-w-6xl mx-auto p-4 mt-4">
+                <div>
+                    <label class="block mb-1">Nombre Completo <span class="text-red-500">*</span></label>
+                    <input type="text" id="input-nombre" placeholder="Ej: Pablo Gómez" oninput="this.value = this.value.replace(/[0-9]/g, '')" required class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]">
+                </div>
+                <div>
+                    <label class="block mb-1">Teléfono <span class="text-red-500">*</span></label>
+                    <input type="tel" id="input-telefono" placeholder="Ej: 600123456" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required class="w-full border-2 border-black p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]">
+                </div>
 
-            <!-- PESTAÑA 1: ANALÍTICA -->
-            <div id="vista-analitica" class="space-y-6 block">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="bg-white p-6 rounded-xl border-2 border-black shadow-[4px_4px_0px_#000]">
-                        <h3 class="text-gray-500 font-bold uppercase text-xs tracking-widest mb-1">Total Reservas</h3>
-                        <div class="text-5xl font-black text-black" id="kpi-reservas">--</div>
-                        <p class="text-green-600 font-bold text-sm mt-2">▲ Crecimiento estable</p>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl border-2 border-black shadow-[4px_4px_0px_#000]">
-                        <h3 class="text-gray-500 font-bold uppercase text-xs tracking-widest mb-1">Zona más rentable</h3>
-                        <div class="text-4xl font-black text-[#E60000] uppercase mt-2" id="kpi-zona">--</div>
-                        <p class="text-gray-500 font-bold text-sm mt-2">Basado en volumen</p>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl border-2 border-black shadow-[4px_4px_0px_#000]">
-                        <h3 class="text-gray-500 font-bold uppercase text-xs tracking-widest mb-1">Ratio de No-Show</h3>
-                        <div class="text-5xl font-black text-black">4.2<span class="text-2xl">%</span></div>
-                        <p class="text-gray-500 font-bold text-sm mt-2">Estimación mensual</p>
-                    </div>
-                </div>
-                <div class="bg-white p-6 rounded-xl border-2 border-black shadow-[4px_4px_0px_#000]">
-                    <h3 class="text-xl font-black uppercase mb-4 border-b-2 border-gray-200 pb-2">Flujo de Reservas por Hora</h3>
-                    <div class="relative h-64 w-full">
-                        <canvas id="graficaReservas"></canvas>
-                    </div>
-                </div>
+                <button onclick="procesarReserva()" id="btn-reservar" class="mt-8 w-full bg-black text-white font-black text-2xl py-4 rounded border-2 border-black uppercase active:scale-95 transition">
+                    Confirmar Reserva
+                </button>
             </div>
 
-            <!-- PESTAÑA 2: GESTIÓN DE MESAS -->
-            <div id="vista-mesas" class="hidden space-y-6">
-                <div class="bg-yellow-100 border-l-4 border-yellow-500 p-4 rounded text-yellow-800 font-bold shadow mb-6">
-                    💡 Añade o quita mesas de tu local de forma instantánea.
+            <!-- VISTA 2: BUSCAR IDENTIFICADOR -->
+            <div id="vista-modificar" class="hidden space-y-4 font-bold">
+                <p class="text-sm text-gray-600 mb-4 text-center md:text-left">Introduce tu identificador de reserva <b>todo junto</b> (sin espacios ni tildes):</p>
+                <div>
+                    <input type="text" id="mod-identificador" oninput="colorearTexto(this.value)" placeholder="PABLOGOMEZ600123456ABC" class="w-full border-2 border-black p-3 rounded focus:outline-none font-black uppercase text-center tracking-widest focus:border-[#E60000] text-sm md:text-base">
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="bg-white p-6 rounded-xl border-2 border-black shadow-[4px_4px_0px_#000] text-center">
-                        <h2 class="text-3xl font-black text-blue-600 uppercase mb-2">Interior</h2>
-                        <p class="text-gray-500 font-bold uppercase text-sm mb-6">Mesas Físicas Totales</p>
-                        <div class="text-8xl font-black mb-8" id="total-interior">--</div>
-                        <div class="flex justify-center gap-4">
-                            <button onclick="modificarMesas('Interior', -1)" class="w-16 h-16 bg-red-100 text-red-600 border-2 border-red-600 rounded-full text-3xl font-black active:scale-90 transition shadow-md">-</button>
-                            <button onclick="modificarMesas('Interior', 1)" class="w-16 h-16 bg-green-100 text-green-600 border-2 border-green-600 rounded-full text-3xl font-black active:scale-90 transition shadow-md">+</button>
-                        </div>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl border-2 border-black shadow-[4px_4px_0px_#000] text-center">
-                        <h2 class="text-3xl font-black text-orange-500 uppercase mb-2">Terraza</h2>
-                        <p class="text-gray-500 font-bold uppercase text-sm mb-6">Mesas Físicas Totales</p>
-                        <div class="text-8xl font-black mb-8" id="total-terraza">--</div>
-                        <div class="flex justify-center gap-4">
-                            <button onclick="modificarMesas('Terraza', -1)" class="w-16 h-16 bg-red-100 text-red-600 border-2 border-red-600 rounded-full text-3xl font-black active:scale-90 transition shadow-md">-</button>
-                            <button onclick="modificarMesas('Terraza', 1)" class="w-16 h-16 bg-green-100 text-green-600 border-2 border-green-600 rounded-full text-3xl font-black active:scale-90 transition shadow-md">+</button>
-                        </div>
-                    </div>
+                <div class="bg-gray-100 p-3 rounded border-2 border-dashed border-gray-400 text-center text-lg md:text-xl font-black tracking-wider break-words min-h-[50px] flex items-center justify-center">
+                    <span id="preview-colores" class="text-gray-400 text-sm">Tu código se pintará aquí...</span>
                 </div>
+                <button id="btn-buscar" onclick="buscarReserva()" class="mt-6 w-full bg-black text-white font-black text-2xl py-4 rounded border-2 border-black uppercase active:scale-95 transition">
+                    Buscar mi reserva
+                </button>
             </div>
 
-            <!-- PESTAÑA 3: BLOQUEOS DE CALENDARIO -->
-            <div id="vista-bloqueos" class="hidden space-y-6">
-                <div class="bg-red-100 border-l-4 border-red-600 p-4 rounded text-red-800 font-bold shadow mb-6">
-                    🔒 Bloquea días completos si cierras por festivo, reforma o evento privado.
+            <!-- VISTA 3: GESTIONAR -->
+            <div id="vista-gestion" class="hidden space-y-4 font-bold">
+                <div class="bg-gray-100 p-4 rounded border-2 border-black text-center mb-4">
+                    <p class="text-sm text-gray-600 uppercase">Reserva Actual</p>
+                    <p class="text-xl text-[#E60000]">Hola <span id="gest-nombre"></span></p>
+                    <p class="text-md">Zona: <span id="gest-zona" class="uppercase"></span></p>
                 </div>
-                <div class="bg-white p-6 rounded-xl border-2 border-black shadow-[4px_4px_0px_#000]">
-                    <h3 class="text-xl font-black uppercase mb-4">Añadir Nuevo Bloqueo</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                        <div>
-                            <label class="block mb-1 font-bold">Fecha a bloquear</label>
-                            <input type="date" id="bloqueo-fecha" class="w-full border-2 border-gray-300 p-3 rounded focus:outline-none focus:border-black font-bold">
-                        </div>
-                        <div>
-                            <label class="block mb-1 font-bold">¿Qué zona bloqueas?</label>
-                            <select id="bloqueo-zona" class="w-full border-2 border-gray-300 p-3 rounded focus:outline-none focus:border-black font-bold uppercase">
-                                <option value="Ambas">Todo el Local</option>
-                                <option value="Interior">Solo Interior</option>
-                                <option value="Terraza">Solo Terraza</option>
-                            </select>
-                        </div>
-                        <button id="btn-crear-bloqueo" onclick="crearBloqueo()" class="w-full bg-black text-white font-black py-3 rounded uppercase active:scale-95 transition">
-                            Bloquear Día
-                        </button>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block mb-1">Cambiar Día</label>
+                        <input type="date" id="gest-fecha" onchange="actualizarHoras('gest-fecha', 'gest-hora')" class="w-full border-2 border-black p-1 px-2 h-10 text-sm md:h-auto md:text-base md:p-3 rounded focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block mb-1">Cambiar Hora</label>
+                        <select id="gest-hora" class="w-full border-2 border-black p-3 rounded focus:outline-none"></select>
                     </div>
                 </div>
-                
-                <div class="bg-white p-6 rounded-xl border-2 border-black shadow-[4px_4px_0px_#000]">
-                    <h3 class="text-xl font-black uppercase mb-4 border-b-2 border-gray-200 pb-2">Días Bloqueados (Activos)</h3>
-                    <div id="lista-bloqueos" class="space-y-3">
-                        <p class="text-gray-500 font-bold">Cargando...</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- PESTAÑA 4: EXPORTACIÓN -->
-            <div id="vista-exportar" class="hidden space-y-6 text-center">
-                <div class="bg-white p-10 rounded-xl border-2 border-black shadow-[6px_6px_0px_#000] max-w-2xl mx-auto mt-10">
-                    <div class="text-6xl mb-6">📊</div>
-                    <h2 class="text-3xl font-black uppercase mb-4">Base de Datos de Clientes</h2>
-                    <p class="text-gray-600 font-bold mb-8">Descarga el histórico completo de reservas en formato CSV (Excel).</p>
-                    <button onclick="exportarExcel()" class="bg-green-600 hover:bg-green-700 text-white text-2xl font-black py-4 px-8 rounded-xl shadow-lg active:scale-95 transition uppercase w-full">
-                        Descargar Excel (CSV)
+                <div class="flex flex-col gap-3 mt-6">
+                    <button id="btn-actualizar" onclick="actualizarReserva()" class="w-full bg-blue-600 text-white font-black text-xl py-4 rounded border-2 border-black uppercase active:scale-95 transition">
+                        Guardar Cambios
+                    </button>
+                    <button id="btn-cancelar" onclick="cancelarReserva()" class="w-full bg-red-600 text-white font-black text-xl py-4 rounded border-2 border-black uppercase active:scale-95 transition">
+                        ❌ Cancelar Reserva
                     </button>
                 </div>
             </div>
 
-        </main>
+        </div>
+    </main>
+
+    <!-- MODAL RESERVA HECHA -->
+    <div id="modal-identificador" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50">
+        <div class="bg-white border-4 border-black p-6 md:p-8 rounded-xl max-w-md w-full text-center shadow-[8px_8px_0px_#E60000]">
+            <h3 class="text-3xl md:text-4xl font-black text-[#E60000] uppercase mb-2">¡Confirmada!</h3>
+            <p class="font-bold text-base md:text-lg mb-4 leading-tight">Guarda este identificador, hazle una captura de pantalla para poder modificar o cancelar tu reserva:</p>
+            <div class="text-xl md:text-3xl font-black bg-gray-100 p-4 rounded border-4 border-black tracking-wider break-words mb-4 flex justify-center flex-wrap">
+                <span id="id-nombre" class="text-red-600"></span><span id="id-tel" class="text-blue-600"></span><span id="id-letras" class="text-green-600"></span>
+            </div>
+            <button onclick="copiarAlPortapapeles()" id="btn-copiar" class="md:hidden w-full bg-yellow-400 text-black font-black text-xl py-3 mb-6 rounded border-2 border-black uppercase active:scale-95 transition">
+                📋 Copiar ID
+            </button>
+            <button onclick="window.location.reload()" class="w-full bg-black text-white font-black text-xl md:text-2xl py-4 rounded border-2 border-black uppercase active:scale-95 transition">
+                Cerrar y Volver
+            </button>
+        </div>
     </div>
 
-    <!-- =================================================================== -->
-    <!-- LÓGICA DEL PANEL                                                    -->
-    <!-- =================================================================== -->
+
     <script>
         const SUPABASE_URL = 'https://ncxrtpmndkmgegtkasub.supabase.co'; 
         const SUPABASE_ANON_KEY = 'sb_publishable_05L29aUddOhhWdeH7qZiqg_3Xq_EKjC';
-        let chartInstancia = null;
+        const TELEGRAM_BOT_TOKEN = '8789184996:AAFV2JsCWBcXo-IhC0YYzQuEhuhWPUgHK6k';
+        const TELEGRAM_CHAT_ID = '6519651464';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        function getSupabase() {
-            if(!window.supabase) throw new Error("Librería de red no lista.");
-            return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let bloqueosGlobales = [];
+        let diasCerradosGlobales = [];
+        let miReservaActual = null;
+        let miZonaActual = null;
+
+        // 🔥 DESCARGAMOS LOS DÍAS CERRADOS Y BLOQUEOS AL ABRIR LA WEB 🔥
+        async function prepararEntorno() {
+            try {
+                // 1. Verificamos el Kill Switch
+                const { data: config } = await supabase.from('configuracion_saas').select('estado_suscripcion').eq('id', 1).single();
+                if (config && config.estado_suscripcion === 'suspendido') {
+                    document.getElementById('vista-reservar').classList.add('hidden');
+                    document.getElementById('vista-modificar').classList.add('hidden');
+                    document.getElementById('vista-gestion').classList.add('hidden');
+                    document.getElementById('btn-cambiar-vista').classList.add('hidden');
+                    document.getElementById('vista-suspendida').classList.remove('hidden');
+                    document.getElementById('titulo-principal').innerText = "Aviso";
+                    return; // Paramos aquí, no hace falta cargar lo demás
+                }
+
+                // 2. Descargamos la lista de días bloqueados y días de la semana cerrados
+                const [respBloqueos, respDias] = await Promise.all([
+                    supabase.from('bloqueos').select('*'),
+                    supabase.from('dias_cerrados').select('dias').eq('id', 1).single()
+                ]);
+
+                if (respBloqueos.data) bloqueosGlobales = respBloqueos.data;
+                if (respDias.data && respDias.data.dias) diasCerradosGlobales = respDias.data.dias.split(',');
+
+                // Generamos las horas con esta nueva información
+                actualizarHoras('input-fecha', 'input-hora');
+
+            } catch (err) {
+                console.warn("Fallo de red conectando con base de datos de configuración.");
+                actualizarHoras('input-fecha', 'input-hora');
+            }
         }
 
-        // --- SISTEMA DE LOGIN (CON LLAVE MAESTRA INTACTA) ---
-        async function intentarLogin() {
-            const u = document.getElementById('login-user').value.trim();
-            const p = document.getElementById('login-pass').value.trim();
-            const btn = document.getElementById('btn-login');
+        // --- CÓDIGO VISUAL ---
+        function copiarAlPortapapeles() {
+            const nombre = document.getElementById('id-nombre').innerText;
+            const tel = document.getElementById('id-tel').innerText;
+            const letras = document.getElementById('id-letras').innerText;
+            navigator.clipboard.writeText(nombre + tel + letras).then(() => {
+                const btn = document.getElementById('btn-copiar');
+                btn.innerText = "✅ ¡COPIADO!";
+                btn.classList.replace('bg-yellow-400', 'bg-green-400');
+                setTimeout(() => { btn.innerText = "📋 Copiar ID"; btn.classList.replace('bg-green-400', 'bg-yellow-400'); }, 2000);
+            }).catch(err => { alert("❌ No se pudo copiar."); });
+        }
 
-            if(!u || !p) return alert("⚠️ Rellena tu correo y contraseña.");
+        function normalizarTexto(str) {
+            if(!str) return '';
+            return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+        }
 
-            if (u === 'pablomaster' && p === 'master1234') {
-                sessionStorage.setItem('manager_logged_in', 'true');
-                desbloquearPanel();
+        function actualizarHoras(idFecha, idHora) {
+            const fechaInput = document.getElementById(idFecha);
+            const selectHora = document.getElementById(idHora);
+            if (!fechaInput || !selectHora) return;
+
+            let ahora = new Date();
+            if (ahora.getHours() >= 23) { ahora.setDate(ahora.getDate() + 1); ahora.setHours(0, 0, 0, 0); }
+
+            const year = ahora.getFullYear();
+            const month = String(ahora.getMonth() + 1).padStart(2, '0');
+            const day = String(ahora.getDate()).padStart(2, '0');
+            const fechaMinima = `${year}-${month}-${day}`;
+            
+            fechaInput.min = fechaMinima;
+            if (!fechaInput.value || fechaInput.value < fechaMinima) { fechaInput.value = fechaMinima; }
+
+            const fechaSeleccionada = fechaInput.value;
+            const fechaDate = new Date(fechaSeleccionada);
+            const diaSemana = fechaDate.getDay().toString(); // 0 es Domingo, 5 es Viernes
+
+            // COMPROBAMOS SI ES UN DÍA CERRADO DE LA SEMANA O UN BLOQUEO GLOBAL
+            let estaCerradoSemanal = diasCerradosGlobales.includes(diaSemana);
+            let estaBloqueado = bloqueosGlobales.some(b => b.fecha === fechaSeleccionada && b.zona === 'Ambas');
+
+            if (estaCerradoSemanal || estaBloqueado) {
+                selectHora.innerHTML = '<option value="">⛔ CERRADO POR DESCANSO</option>';
                 return;
             }
 
-            btn.innerText = "⏳ Comprobando...";
+            const horaReal = new Date(); 
+            const hoyRealIso = `${horaReal.getFullYear()}-${String(horaReal.getMonth() + 1).padStart(2, '0')}-${String(horaReal.getDate()).padStart(2, '0')}`;
+            let esHoyReal = (fechaSeleccionada === hoyRealIso);
+            let opcionesHTML = "";
 
-            try {
-                const sp = getSupabase();
-                const { data, error } = await sp.auth.signInWithPassword({ email: u, password: p });
+            for(let h = 8; h <= 23; h++) {
+                let minutosPosibles = (h === 23) ? ['00'] : ['00', '15', '30', '45'];
+                for(let m of minutosPosibles) {
+                    let minutosOpcion = (h * 60) + parseInt(m);
+                    let minutosAhora = (horaReal.getHours() * 60) + horaReal.getMinutes();
+                    if (esHoyReal && minutosOpcion <= minutosAhora) continue;
 
-                if (error) {
-                    alert("❌ Correo o Contraseña incorrectos.");
-                    btn.innerText = "ENTRAR AL PANEL";
-                } else if (data.session) {
-                    sessionStorage.setItem('manager_logged_in', 'true');
-                    desbloquearPanel();
+                    let horaFormateada = h < 10 ? '0' + h : h; 
+                    opcionesHTML += `<option value="${horaFormateada}:${m}">${horaFormateada}:${m}</option>`;
                 }
-            } catch (err) {
-                alert("❌ Fallo conectando a Supabase.");
-                btn.innerText = "ENTRAR AL PANEL";
+            }
+            if (opcionesHTML === "") opcionesHTML = `<option value="">Cerrado / Sin horas</option>`;
+            selectHora.innerHTML = opcionesHTML;
+        }
+
+        function colorearTexto(val) {
+            val = normalizarTexto(val);
+            const preview = document.getElementById('preview-colores');
+            if(val === "") { preview.innerHTML = '<span class="text-gray-400 text-sm">Tu código se pintará aquí...</span>'; return; }
+            const regex = /^([A-Z]*)([0-9]*)([A-Z]*)$/;
+            const match = val.match(regex);
+            if (match) { preview.innerHTML = `<span class="text-red-600">${match[1]||''}</span><span class="text-blue-600">${match[2]||''}</span><span class="text-green-600">${match[3]||''}</span>`; } else { preview.innerHTML = val; }
+        }
+
+        function cambiarVista() {
+            const vRes = document.getElementById('vista-reservar');
+            const vMod = document.getElementById('vista-modificar');
+            const vGest = document.getElementById('vista-gestion');
+            const titulo = document.getElementById('titulo-principal');
+            const btn = document.getElementById('btn-cambiar-vista');
+
+            if (!vRes.classList.contains('hidden')) {
+                vRes.classList.add('hidden'); vMod.classList.remove('hidden'); titulo.innerText = "Tu Reserva"; btn.innerText = "Volver a Reservar";
+            } else {
+                vRes.classList.remove('hidden'); vMod.classList.add('hidden'); vGest.classList.add('hidden'); titulo.innerText = "Reservar"; btn.innerText = "Modificar Reserva";
             }
         }
 
-        if (sessionStorage.getItem('manager_logged_in') === 'true') {
-            desbloquearPanel();
-        }
+        // --- LÓGICA DE BASE DE DATOS ---
+        async function procesarReserva() {
+            const fecha = document.getElementById('input-fecha').value;
+            const hora = document.getElementById('input-hora').value;
+            const zona = document.getElementById('input-zona').value;
+            const nombre = document.getElementById('input-nombre').value.trim();
+            const telefono = document.getElementById('input-telefono').value.trim();
 
-        function desbloquearPanel() {
-            document.getElementById('pantalla-login').classList.add('hidden');
-            document.getElementById('pantalla-dashboard').classList.remove('hidden');
-            setTimeout(cargarAnalitica, 200); 
-        }
+            if(!fecha || !hora || !nombre || !telefono) return alert("⚠️ Rellena tu Nombre y Teléfono obligatoriamente.");
 
-        function cambiarPestaña(cual) {
-            ['analitica', 'mesas', 'bloqueos', 'exportar'].forEach(p => {
-                document.getElementById(`vista-${p}`).classList.add('hidden');
-                document.getElementById(`tab-${p}`).className = "bg-gray-800 text-gray-300 hover:text-white px-4 py-2 rounded font-black uppercase text-xs md:text-sm whitespace-nowrap transition";
-            });
+            // Última barrera de seguridad: Comprobamos si el cliente ha elegido una ZONA que está bloqueada
+            let zonaBloqueada = bloqueosGlobales.find(b => b.fecha === fecha && (b.zona === 'Ambas' || b.zona === zona));
+            if (zonaBloqueada) {
+                return alert(`❌ Lo sentimos, la zona de ${zona} se encuentra cerrada por evento o festivo el día ${fecha}.`);
+            }
 
-            document.getElementById(`vista-${cual}`).classList.remove('hidden');
-            document.getElementById(`tab-${cual}`).className = "bg-white text-black px-4 py-2 rounded font-black uppercase text-xs md:text-sm shadow whitespace-nowrap";
+            const btn = document.getElementById('btn-reservar');
+            btn.innerHTML = 'Enviando...'; btn.disabled = true;
+
+            const letrasAleatorias = Math.random().toString(36).substring(2, 5).toUpperCase();
+            const nombreLimpio = normalizarTexto(nombre);
+            const identificadorCompleto = `${nombreLimpio}${telefono}${letrasAleatorias}`;
 
             try {
-                if(cual === 'analitica') cargarAnalitica();
-                if(cual === 'mesas') cargarMesas();
-                if(cual === 'bloqueos') cargarBloqueos();
-            } catch (e) {}
-        }
+                const msg = `🍔 *NUEVA RESERVA* 🍔\n👤 *Nombre:* ${nombre}\n📞 *Tlf:* ${telefono}\n📅 *Día:* ${fecha}\n⏰ *Hora:* ${hora}\n📍 *Zona:* ${zona}\n🔑 *ID:* ${identificadorCompleto}`;
+                fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: msg, parse_mode: 'Markdown' }) });
 
-        // ==========================================
-        // FUNCIONES DE BLOQUEOS (REPARADAS Y BLINDADAS)
-        // ==========================================
-        async function cargarBloqueos() {
-            const lista = document.getElementById('lista-bloqueos');
-            try {
-                const sp = getSupabase();
-                const { data: bloqueos, error } = await sp.from('bloqueos').select('*').order('fecha', { ascending: true });
-                
-                // Si la tabla no existe en supabase o da error
-                if(error) {
-                    lista.innerHTML = '<p class="text-red-500 font-bold">Asegúrate de que creaste la tabla de bloqueos en Supabase.</p>';
-                    return;
+                const { data: mesasZona, error: errMesas } = await supabase.from('mesas').select('id').eq('zona', zona);
+                if (errMesas) throw errMesas;
+
+                const { data: reservasDia } = await supabase.from('reservas').select('mesa_id, hora_inicio').eq('fecha', fecha);
+                const horaSol = new Date(`${fecha}T${hora}:00`);
+                let mesaAsignada = (mesasZona || []).find(m => {
+                    const reservasMesa = (reservasDia || []).filter(r => r.mesa_id === m.id);
+                    return !reservasMesa.some(r => Math.abs((horaSol - new Date(`${fecha}T${r.hora_inicio}`)) / 60000) < 150);
+                });
+
+                if (!mesaAsignada) {
+                    alert(`❌ Lo sentimos, no quedan mesas libres en ${zona} a esa hora.`);
+                    btn.innerHTML = 'Confirmar Reserva'; btn.disabled = false; return;
                 }
 
-                if(!bloqueos || bloqueos.length === 0) {
-                    lista.innerHTML = '<p class="text-gray-500 font-bold">No hay ningún bloqueo activo.</p>';
-                    return;
-                }
+                const { error: insertError } = await supabase.from('reservas').insert([{ mesa_id: mesaAsignada.id, nombre_cliente: nombre, telefono_cliente: telefono, fecha: fecha, hora_inicio: hora + ':00', codigo_secreto: letrasAleatorias }]);
 
-                let html = "";
-                bloqueos.forEach(b => {
-                    html += `
-                    <div class="flex justify-between items-center bg-gray-50 p-4 rounded border border-gray-200 mb-2">
-                        <div>
-                            <span class="text-xl font-black block">${b.fecha}</span>
-                            <span class="text-sm font-bold text-gray-500 uppercase">Zona: ${b.zona}</span>
-                        </div>
-                        <button onclick="borrarBloqueo('${b.id}', this)" class="bg-red-100 text-red-600 px-4 py-2 rounded border border-red-600 font-bold uppercase hover:bg-red-200 active:scale-95 transition shadow-sm">
-                            Desbloquear
-                        </button>
-                    </div>`;
-                });
-                lista.innerHTML = html;
-            } catch (error) {
-                lista.innerHTML = '<p class="text-red-500 font-bold">Error conectando a la base de datos.</p>';
-            }
+                if (insertError) { alert("❌ Fallo en la BD al guardar."); btn.innerHTML = 'Confirmar Reserva'; btn.disabled = false; return; }
+
+                document.getElementById('id-nombre').innerText = nombreLimpio;
+                document.getElementById('id-tel').innerText = telefono;
+                document.getElementById('id-letras').innerText = letrasAleatorias;
+                document.body.style.overflow = 'hidden';
+                document.getElementById('modal-identificador').classList.remove('hidden');
+
+            } catch (err) { alert("❌ Error de conexión al hacer la reserva."); btn.innerHTML = 'Confirmar Reserva'; btn.disabled = false; }
         }
 
-        async function crearBloqueo() {
-            const f = document.getElementById('bloqueo-fecha').value;
-            const z = document.getElementById('bloqueo-zona').value;
-            if(!f) return alert("⚠️ Por favor, elige una fecha en el calendario.");
-
-            const btn = document.getElementById('btn-crear-bloqueo');
-            const textoOriginal = btn.innerText;
-            btn.innerText = "⏳ Guardando...";
+        async function buscarReserva() {
+            const inputVal = normalizarTexto(document.getElementById('mod-identificador').value);
+            if(!inputVal) return alert("⚠️ Introduce tu identificador.");
+            const btn = document.getElementById('btn-buscar'); btn.innerHTML = 'Buscando...'; btn.disabled = true;
 
             try {
-                const sp = getSupabase();
-                const { error } = await sp.from('bloqueos').insert([{ fecha: f, zona: z }]);
-                
-                if(error) throw error; // Si Supabase falla, nos lanza al catch
+                const { data: reservas, error: errorBD } = await supabase.from('reservas').select('*');
+                if(errorBD) throw errorBD; 
+                const { data: mesas } = await supabase.from('mesas').select('id, zona');
 
-                document.getElementById('bloqueo-fecha').value = "";
-                await cargarBloqueos(); // Refrescamos la lista de abajo
-            } catch(e) { 
-                alert("❌ Fallo al guardar bloqueo. Comprueba tu internet o tu base de datos."); 
-            }
-            btn.innerText = textoOriginal;
+                const reservaEncontrada = (reservas || []).find(r => normalizarTexto(r.nombre_cliente) + normalizarTexto(r.telefono_cliente) + normalizarTexto(r.codigo_secreto) === inputVal);
+
+                if(!reservaEncontrada) { alert("❌ No hemos encontrado tu reserva."); btn.innerHTML = 'Buscar mi reserva'; btn.disabled = false; return; }
+
+                miReservaActual = reservaEncontrada;
+                const mesaAsignada = mesas.find(m => m.id === miReservaActual.mesa_id);
+                miZonaActual = mesaAsignada ? mesaAsignada.zona : 'Sin Zona';
+
+                document.getElementById('gest-nombre').innerText = miReservaActual.nombre_cliente;
+                document.getElementById('gest-zona').innerText = miZonaActual;
+                document.getElementById('vista-modificar').classList.add('hidden');
+                document.getElementById('vista-gestion').classList.remove('hidden');
+                document.getElementById('gest-fecha').value = miReservaActual.fecha;
+                actualizarHoras('gest-fecha', 'gest-hora');
+                setTimeout(() => { document.getElementById('gest-hora').value = miReservaActual.hora_inicio.substring(0,5); }, 100);
+
+            } catch (error) { alert("❌ Fallo conectando a Supabase."); }
+            btn.innerHTML = 'Buscar mi reserva'; btn.disabled = false;
         }
 
-        async function borrarBloqueo(id_bloqueo, btnElemento) {
-            // El botón pasa a modo carga para que veas que funciona
-            if(btnElemento) btnElemento.innerText = "⏳...";
+        async function actualizarReserva() {
+            const nuevaFecha = document.getElementById('gest-fecha').value;
+            const nuevaHora = document.getElementById('gest-hora').value;
+            if(!nuevaFecha || !nuevaHora) return;
+
+            let zonaBloqueada = bloqueosGlobales.find(b => b.fecha === nuevaFecha && (b.zona === 'Ambas' || b.zona === miZonaActual));
+            if (zonaBloqueada) return alert(`❌ Lo sentimos, la zona está cerrada el ${nuevaFecha}.`);
+
+            const btn = document.getElementById('btn-actualizar'); btn.innerHTML = 'Guardando...'; btn.disabled = true;
 
             try {
-                const sp = getSupabase();
-                const { error } = await sp.from('bloqueos').delete().eq('id', id_bloqueo);
+                const { data: mesasZona } = await supabase.from('mesas').select('id').eq('zona', miZonaActual);
+                const { data: reservasDia } = await supabase.from('reservas').select('id, mesa_id, hora_inicio').eq('fecha', nuevaFecha);
                 
-                if(error) throw error;
-                
-                // Solo recarga la lista cuando la base de datos ha confirmado el borrado
-                await cargarBloqueos();
-            } catch(e) { 
-                if(btnElemento) btnElemento.innerText = "Desbloquear";
-                alert("❌ Error al desbloquear el día. Inténtalo de nuevo."); 
-            }
-        }
-
-        // ==========================================
-        // RESTO DE FUNCIONES (INTACTAS)
-        // ==========================================
-        async function cargarAnalitica() {
-            try {
-                const sp = getSupabase();
-                const { data: reservas, error } = await sp.from('reservas').select('hora_inicio, mesas(zona), fecha');
-                if (error) throw error;
-                
-                const datos = reservas || [];
-                document.getElementById('kpi-reservas').innerText = datos.length;
-
-                let intCount = 0; let terCount = 0;
-                let horasContador = {};
-
-                datos.forEach(r => {
-                    if(r.mesas && r.mesas.zona === 'Interior') intCount++;
-                    if(r.mesas && r.mesas.zona === 'Terraza') terCount++;
-                    let hora = r.hora_inicio.substring(0,2) + ":00";
-                    horasContador[hora] = (horasContador[hora] || 0) + 1;
+                const horaSol = new Date(`${nuevaFecha}T${nuevaHora}:00`);
+                let nuevaMesa = mesasZona.find(m => {
+                    const reservasMesa = (reservasDia || []).filter(r => r.mesa_id === m.id && r.id !== miReservaActual.id);
+                    return !reservasMesa.some(r => Math.abs((horaSol - new Date(`${nuevaFecha}T${r.hora_inicio}`)) / 60000) < 150);
                 });
 
-                document.getElementById('kpi-zona').innerText = (intCount >= terCount) ? 'Interior' : 'Terraza';
+                if(!nuevaMesa) { alert(`❌ No hay mesas libres en ${miZonaActual} para esa nueva hora.`); btn.innerHTML = 'Guardar Cambios'; btn.disabled = false; return; }
 
-                let etiquetas = Object.keys(horasContador).sort();
-                let nums = etiquetas.map(e => horasContador[e]);
+                await supabase.from('reservas').update({ fecha: nuevaFecha, hora_inicio: nuevaHora + ':00', mesa_id: nuevaMesa.id }).eq('id', miReservaActual.id);
 
-                const ctx = document.getElementById('graficaReservas').getContext('2d');
-                if(chartInstancia) chartInstancia.destroy();
-                
-                chartInstancia = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: etiquetas.length > 0 ? etiquetas : ['13:00','14:00','15:00','20:00','21:00','22:00'],
-                        datasets: [{
-                            label: 'Volumen',
-                            data: nums.length > 0 ? nums : [0,0,0,0,0,0], 
-                            backgroundColor: '#E60000',
-                            borderRadius: 4
-                        }]
-                    },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-                });
+                const msg = `✏️ *RESERVA MODIFICADA* ✏️\n👤 ${miReservaActual.nombre_cliente}\n🔄 *NUEVA FECHA:* ${nuevaFecha} a las ${nuevaHora}`;
+                fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: msg, parse_mode: 'Markdown' }) });
 
-            } catch (error) { document.getElementById('kpi-reservas').innerText = "❌"; }
+                alert("✅ Tu reserva se ha actualizado."); window.location.reload();
+            } catch (e) { alert("❌ Fallo al actualizar."); btn.innerHTML = 'Guardar Cambios'; btn.disabled = false; }
         }
 
-        async function cargarMesas() {
+        async function cancelarReserva() {
+            if(!confirm("⚠️ ¿Estás seguro de que quieres cancelar tu reserva?")) return;
+            const btn = document.getElementById('btn-cancelar'); btn.innerHTML = 'Cancelando...'; btn.disabled = true;
+
             try {
-                const sp = getSupabase();
-                const { data: mesas, error } = await sp.from('mesas').select('*');
-                if(error) throw error;
-
-                let i = 0; let t = 0;
-                (mesas || []).forEach(m => {
-                    if(m.zona === 'Interior') i++;
-                    if(m.zona === 'Terraza') t++;
-                });
-                document.getElementById('total-interior').innerText = i;
-                document.getElementById('total-terraza').innerText = t;
-            } catch (error) {
-                document.getElementById('total-interior').innerText = "❌";
-                document.getElementById('total-terraza').innerText = "❌";
-            }
+                await supabase.from('reservas').delete().eq('id', miReservaActual.id);
+                const msg = `❌ *RESERVA CANCELADA* ❌\n👤 ${miReservaActual.nombre_cliente}\n📅 Iba a ser el ${miReservaActual.fecha}`;
+                fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: msg, parse_mode: 'Markdown' }) });
+                alert("🗑️ Tu reserva ha sido cancelada."); window.location.reload();
+            } catch (e) { alert("❌ Error al cancelar."); btn.innerHTML = '❌ Cancelar Reserva'; btn.disabled = false; }
         }
 
-        async function modificarMesas(zona, cantidad) {
-            if(!confirm(`¿Seguro que quieres ${cantidad > 0 ? 'añadir' : 'quitar'} 1 mesa en ${zona}?`)) return;
-            
-            try {
-                const sp = getSupabase();
-                if(cantidad > 0) {
-                    await sp.from('mesas').insert([{ zona: zona, estado_actual: 'libre' }]);
-                } else {
-                    const { data: mesasZona } = await sp.from('mesas').select('id').eq('zona', zona).eq('estado_actual', 'libre').limit(1);
-                    if(mesasZona && mesasZona.length > 0) {
-                        await sp.from('mesas').delete().eq('id', mesasZona[0].id);
-                    } else {
-                        return alert("No se puede borrar. Asegúrate de que haya alguna mesa libre y sin clientes en esa zona primero.");
-                    }
-                }
-                cargarMesas(); 
-            } catch (error) {
-                alert("Error de conexión al modificar la mesa.");
-            }
-        }
+        // LLAMAMOS AL ARRANQUE
+        prepararEntorno();
 
-        async function exportarExcel() {
-            try {
-                const sp = getSupabase();
-                const { data: reservas, error } = await sp.from('reservas').select('fecha, hora_inicio, nombre_cliente, telefono_cliente, mesas(zona)');
-                if (error) throw error;
-                
-                if(!reservas || reservas.length === 0) return alert("No hay reservas guardadas para exportar.");
-
-                let csvContent = "\uFEFFFECHA,HORA,NOMBRE,TELEFONO,ZONA\n";
-                reservas.forEach(r => {
-                    let zona = r.mesas ? r.mesas.zona : 'Desc';
-                    let fila = `${r.fecha},${r.hora_inicio},"${r.nombre_cliente}","${r.telefono_cliente}",${zona}`;
-                    csvContent += fila + "\n";
-                });
-
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                const link = document.createElement("a");
-                const url = URL.createObjectURL(blob);
-                
-                link.setAttribute("href", url);
-                link.setAttribute("download", "Reservas_Restaurante.csv");
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-
-            } catch (error) {
-                alert("Error de conexión al exportar.");
-            }
-        }
     </script>
 </body>
 </html>
