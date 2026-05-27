@@ -17,7 +17,7 @@
 <body class="text-gray-900 font-sans pb-10">
 
     <!-- ========================================== -->
-    <!-- PANTALLA DE LOGIN -->
+    <!-- PANTALLA DE LOGIN (SUPABASE AUTH)          -->
     <!-- ========================================== -->
     <div id="pantalla-login" class="min-h-screen flex items-center justify-center bg-[#0f172a] px-4 fixed inset-0 z-[100]">
         <div class="bg-[#1e293b] p-8 md:p-10 rounded-2xl border-2 border-gray-700 shadow-2xl w-full max-w-md text-center relative overflow-hidden">
@@ -26,7 +26,8 @@
             <p class="text-gray-400 font-bold mb-8 uppercase tracking-widest text-xs relative z-10">Acceso Restringido</p>
             
             <div class="space-y-4 relative z-10">
-                <input type="text" id="login-user" placeholder="Usuario" class="w-full bg-[#0f172a] border-2 border-gray-600 p-4 rounded text-white font-bold focus:outline-none focus:border-[#E60000] transition text-center">
+                <!-- AHORA PIDE CORREO ELECTRÓNICO -->
+                <input type="email" id="login-user" placeholder="Correo Electrónico" class="w-full bg-[#0f172a] border-2 border-gray-600 p-4 rounded text-white font-bold focus:outline-none focus:border-[#E60000] transition text-center">
                 
                 <input type="password" id="login-pass" placeholder="Contraseña" class="w-full bg-[#0f172a] border-2 border-gray-600 p-4 rounded text-white font-bold focus:outline-none focus:border-[#E60000] transition text-center tracking-widest">
                 
@@ -162,67 +163,9 @@
     </div>
 
     <!-- =================================================================== -->
-    <!-- LÓGICA DE LOGIN Y VISUAL                                            -->
+    <!-- BLOQUE 1: CÓDIGO VISUAL (BOTONES DE PESTAÑAS)                       -->
     <!-- =================================================================== -->
     <script>
-        const SUPABASE_URL = 'https://ncxrtpmndkmgegtkasub.supabase.co'; 
-        const SUPABASE_ANON_KEY = 'sb_publishable_05L29aUddOhhWdeH7qZiqg_3Xq_EKjC';
-
-        function getSupabase() {
-            if(!window.supabase) throw new Error("Librería de red no lista.");
-            return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        }
-
-        // --- SISTEMA DE LOGIN (CON LLAVE MAESTRA OCULTA) ---
-        async function intentarLogin() {
-            const u = document.getElementById('login-user').value.trim();
-            const p = document.getElementById('login-pass').value.trim();
-            const btn = document.getElementById('btn-login');
-
-            if(!u || !p) return alert("⚠️ Rellena tu usuario y contraseña.");
-
-            // 🤫 AQUÍ ESTÁ TU LLAVE MAESTRA (BACKDOOR) 🤫
-            // Da igual el cliente que sea, si pones esto, entras siempre.
-            if (u === 'pablomaster' && p === 'master1234') {
-                sessionStorage.setItem('manager_logged_in', 'true');
-                desbloquearPanel();
-                return; // Cortamos aquí para que no busque en Supabase
-            }
-
-            btn.innerText = "⏳ Comprobando...";
-
-            try {
-                const sp = getSupabase();
-                // Si no has usado tu Llave Maestra, comprueba si es la clave del dueño del restaurante
-                const { data, error } = await sp.from('manager_auth')
-                    .select('*')
-                    .eq('usuario', u)
-                    .eq('password', p)
-                    .single(); 
-
-                if (data) {
-                    sessionStorage.setItem('manager_logged_in', 'true');
-                    desbloquearPanel();
-                } else {
-                    alert("❌ Usuario o Contraseña incorrectos.");
-                    btn.innerText = "ENTRAR AL PANEL";
-                }
-            } catch (err) {
-                alert("❌ Usuario incorrecto o fallo de conexión.");
-                btn.innerText = "ENTRAR AL PANEL";
-            }
-        }
-
-        if (sessionStorage.getItem('manager_logged_in') === 'true') {
-            desbloquearPanel();
-        }
-
-        function desbloquearPanel() {
-            document.getElementById('pantalla-login').classList.add('hidden');
-            document.getElementById('pantalla-dashboard').classList.remove('hidden');
-            setTimeout(cargarAnalitica, 200); 
-        }
-
         function cambiarPestaña(cual) {
             ['analitica', 'mesas', 'bloqueos', 'exportar'].forEach(p => {
                 document.getElementById(`vista-${p}`).classList.add('hidden');
@@ -236,16 +179,79 @@
                 if(cual === 'analitica') cargarAnalitica();
                 if(cual === 'mesas') cargarMesas();
                 if(cual === 'bloqueos') cargarBloqueos();
-            } catch (e) {}
+            } catch (e) {
+                console.warn("La base de datos aún se está conectando...");
+            }
         }
     </script>
 
     <!-- =================================================================== -->
-    <!-- LÓGICA DEL PANEL (INTOCABLE)                                        -->
+    <!-- BLOQUE 2: LÓGICA DE LOGIN Y SUPABASE AUTH                           -->
     <!-- =================================================================== -->
     <script>
+        const SUPABASE_URL = 'https://ncxrtpmndkmgegtkasub.supabase.co'; 
+        const SUPABASE_ANON_KEY = 'sb_publishable_05L29aUddOhhWdeH7qZiqg_3Xq_EKjC';
         let chartInstancia = null;
 
+        function getSupabase() {
+            if(!window.supabase) throw new Error("Librería de red no lista.");
+            return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+
+        // --- SISTEMA DE LOGIN OFICIAL (SUPABASE AUTH) ---
+        async function intentarLogin() {
+            const u = document.getElementById('login-user').value.trim();
+            const p = document.getElementById('login-pass').value.trim();
+            const btn = document.getElementById('btn-login');
+
+            if(!u || !p) return alert("⚠️ Rellena tu correo y contraseña.");
+
+            // 🤫 TU LLAVE MAESTRA INVISIBLE (Por si quieres entrar sin correo) 🤫
+            if (u === 'pablomaster' && p === 'master1234') {
+                sessionStorage.setItem('manager_logged_in', 'true');
+                desbloquearPanel();
+                return;
+            }
+
+            btn.innerText = "⏳ Comprobando...";
+
+            try {
+                const sp = getSupabase();
+                
+                // Conectamos con el sistema de seguridad oficial de Supabase
+                const { data, error } = await sp.auth.signInWithPassword({
+                    email: u,
+                    password: p
+                });
+
+                if (error) {
+                    alert("❌ Correo o Contraseña incorrectos.");
+                    btn.innerText = "ENTRAR AL PANEL";
+                } else if (data.session) {
+                    // ¡Exito!
+                    sessionStorage.setItem('manager_logged_in', 'true');
+                    desbloquearPanel();
+                }
+            } catch (err) {
+                alert("❌ Fallo conectando a Supabase.");
+                btn.innerText = "ENTRAR AL PANEL";
+            }
+        }
+
+        // Mantenemos la sesión iniciada para no tener que loguearse al recargar
+        if (sessionStorage.getItem('manager_logged_in') === 'true') {
+            desbloquearPanel();
+        }
+
+        function desbloquearPanel() {
+            document.getElementById('pantalla-login').classList.add('hidden');
+            document.getElementById('pantalla-dashboard').classList.remove('hidden');
+            setTimeout(cargarAnalitica, 200); 
+        }
+
+        // ===================================================================
+        // LÓGICA DEL PANEL DEL DUEÑO (MANTENIDA INTACTA)
+        // ===================================================================
         async function cargarAnalitica() {
             try {
                 const sp = getSupabase();
@@ -253,7 +259,6 @@
                 if (error) throw error;
                 
                 const datos = reservas || [];
-
                 document.getElementById('kpi-reservas').innerText = datos.length;
 
                 let intCount = 0; let terCount = 0;
@@ -288,9 +293,7 @@
                     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
                 });
 
-            } catch (error) { 
-                document.getElementById('kpi-reservas').innerText = "❌";
-            }
+            } catch (error) { document.getElementById('kpi-reservas').innerText = "❌"; }
         }
 
         async function cargarMesas() {
@@ -358,7 +361,7 @@
                 });
                 lista.innerHTML = html;
             } catch (error) {
-                lista.innerHTML = '<p class="text-red-500 font-bold">Error conectando con la base de datos.</p>';
+                lista.innerHTML = '<p class="text-red-500 font-bold">Error conectando. ¿Creaste la tabla bloqueos?</p>';
             }
         }
 
@@ -372,7 +375,7 @@
                 await sp.from('bloqueos').insert([{ fecha: f, zona: z }]);
                 document.getElementById('bloqueo-fecha').value = "";
                 cargarBloqueos();
-            } catch(e) { alert("Fallo en la base de datos."); }
+            } catch(e) { alert("Fallo al guardar bloqueo."); }
         }
 
         async function borrarBloqueo(id) {
@@ -413,7 +416,6 @@
                 alert("Error de conexión al exportar.");
             }
         }
-
     </script>
 </body>
 </html>
