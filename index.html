@@ -27,19 +27,13 @@
                 </button>
             </div>
 
-            <!-- 🔥 NUEVO: VISTA DE SERVICIO SUSPENDIDO (Oculta por defecto) 🔥 -->
-            <div id="vista-suspendida" class="hidden text-center py-10 space-y-4">
-                <div class="text-6xl mb-4">🚧</div>
-                <h3 class="text-2xl font-black uppercase text-gray-800">Servicio No Disponible</h3>
-                <p class="text-gray-600 font-bold">El sistema de reservas online se encuentra temporalmente desactivado para este local. Disculpe las molestias.</p>
-            </div>
-
             <!-- VISTA 1: FORMULARIO DE RESERVA -->
             <div id="vista-reservar" class="space-y-4 font-bold">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block mb-1">Día</label>
-                        <input type="date" id="input-fecha" onchange="actualizarHoras('input-fecha', 'input-hora')" required class="w-full border-2 border-black p-1 px-2 h-10 text-sm md:h-auto md:text-base md:p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]">
+                        <!-- AQUÍ EL CAMBIO ESTÉTICO: py-2 px-3 en móvil, md:p-3 en PC -->
+                        <input type="date" id="input-fecha" onchange="actualizarHoras('input-fecha', 'input-hora')" required class="w-full border-2 border-black py-2 px-3 md:p-3 rounded focus:outline-none focus:ring-2 focus:ring-[#E60000]">
                     </div>
                     <div>
                         <label class="block mb-1">Hora</label>
@@ -97,7 +91,8 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block mb-1">Cambiar Día</label>
-                        <input type="date" id="gest-fecha" onchange="actualizarHoras('gest-fecha', 'gest-hora')" class="w-full border-2 border-black p-1 px-2 h-10 text-sm md:h-auto md:text-base md:p-3 rounded focus:outline-none">
+                        <!-- AQUÍ EL CAMBIO ESTÉTICO: py-2 px-3 en móvil, md:p-3 en PC -->
+                        <input type="date" id="gest-fecha" onchange="actualizarHoras('gest-fecha', 'gest-hora')" class="w-full border-2 border-black py-2 px-3 md:p-3 rounded focus:outline-none">
                     </div>
                     <div>
                         <label class="block mb-1">Cambiar Hora</label>
@@ -153,11 +148,14 @@
                 const btn = document.getElementById('btn-copiar');
                 btn.innerText = "✅ ¡COPIADO!";
                 btn.classList.replace('bg-yellow-400', 'bg-green-400');
+                
                 setTimeout(() => {
                     btn.innerText = "📋 Copiar ID";
                     btn.classList.replace('bg-green-400', 'bg-yellow-400');
                 }, 2000);
-            }).catch(err => { alert("❌ No se pudo copiar. Haz una captura."); });
+            }).catch(err => {
+                alert("❌ No se pudo copiar. Haz una captura de pantalla.");
+            });
         }
 
         function normalizarTexto(str) {
@@ -171,6 +169,7 @@
             if (!fechaInput || !selectHora) return;
 
             let ahora = new Date();
+            
             if (ahora.getHours() >= 23) {
                 ahora.setDate(ahora.getDate() + 1);
                 ahora.setHours(0, 0, 0, 0); 
@@ -198,6 +197,7 @@
                 for(let m of minutosPosibles) {
                     let minutosOpcion = (h * 60) + parseInt(m);
                     let minutosAhora = (horaReal.getHours() * 60) + horaReal.getMinutes();
+                    
                     if (esHoyReal && minutosOpcion <= minutosAhora) continue;
 
                     let horaFormateada = h < 10 ? '0' + h : h; 
@@ -249,46 +249,17 @@
     </script>
 
     <!-- ========================================== -->
-    <!-- BASE DE DATOS Y COMPROBADOR DE ESTADO      -->
+    <!-- BASE DE DATOS Y TELEGRAM (INTOCABLE)       -->
     <!-- ========================================== -->
     <script>
         const SUPABASE_URL = 'https://ncxrtpmndkmgegtkasub.supabase.co'; 
         const SUPABASE_ANON_KEY = 'sb_publishable_05L29aUddOhhWdeH7qZiqg_3Xq_EKjC';
         const TELEGRAM_BOT_TOKEN = '8789184996:AAFV2JsCWBcXo-IhC0YYzQuEhuhWPUgHK6k';
         const TELEGRAM_CHAT_ID = '6519651464';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let miReservaActual = null;
         let miZonaActual = null;
 
-        // 🔥 NUEVO: COMPROBAMOS SI HAS APAGADO LA WEB DESDE EL SÚPER ADMIN 🔥
-        async function comprobarEstadoSuscripcion() {
-            try {
-                const { data } = await supabase.from('configuracion_saas').select('estado_suscripcion').eq('id', 1).single();
-                
-                // Si tú le has dado al Kill Switch y pone "suspendido"...
-                if (data && data.estado_suscripcion === 'suspendido') {
-                    // Escondemos todo lo de reservas
-                    document.getElementById('vista-reservar').classList.add('hidden');
-                    document.getElementById('vista-modificar').classList.add('hidden');
-                    document.getElementById('vista-gestion').classList.add('hidden');
-                    document.getElementById('btn-cambiar-vista').classList.add('hidden');
-                    
-                    // Mostramos el cartel de Mantenimiento / Suspendido
-                    document.getElementById('vista-suspendida').classList.remove('hidden');
-                    document.getElementById('titulo-principal').innerText = "Aviso";
-                }
-            } catch (err) {
-                // Si la tabla no existe aún o hay un fallo de red, dejamos que la web funcione normal por si acaso.
-                console.warn("No se pudo verificar el estado de la suscripción.");
-            }
-        }
-
-        // Ejecutamos la comprobación nada más cargar la página
-        comprobarEstadoSuscripcion();
-
-
-        // (El resto de la lógica se mantiene intocable)
         async function procesarReserva() {
             const fecha = document.getElementById('input-fecha').value;
             const hora = document.getElementById('input-hora').value;
@@ -306,6 +277,8 @@
             const identificadorCompleto = `${nombreLimpio}${telefono}${letrasAleatorias}`;
 
             try {
+                const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
                 const msg = `🍔 *NUEVA RESERVA* 🍔\n👤 *Nombre:* ${nombre}\n📞 *Tlf:* ${telefono}\n📅 *Día:* ${fecha}\n⏰ *Hora:* ${hora}\n📍 *Zona:* ${zona}\n🔑 *ID:* ${identificadorCompleto}`;
                 fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: msg, parse_mode: 'Markdown' }) });
 
@@ -363,6 +336,8 @@
             btn.innerHTML = 'Buscando...'; btn.disabled = true;
 
             try {
+                const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                
                 const { data: reservas, error: errorBD } = await supabase.from('reservas').select('*');
                 if(errorBD) throw errorBD; 
 
@@ -410,6 +385,7 @@
             btn.innerHTML = 'Guardando...'; btn.disabled = true;
 
             try {
+                const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 const { data: mesasZona } = await supabase.from('mesas').select('id').eq('zona', miZonaActual);
                 const { data: reservasDia } = await supabase.from('reservas').select('id, mesa_id, hora_inicio').eq('fecha', nuevaFecha);
                 
@@ -443,6 +419,7 @@
             btn.innerHTML = 'Cancelando...'; btn.disabled = true;
 
             try {
+                const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 await supabase.from('reservas').delete().eq('id', miReservaActual.id);
                 
                 const msg = `❌ *RESERVA CANCELADA* ❌\n👤 ${miReservaActual.nombre_cliente}\n📞 ${miReservaActual.telefono_cliente}\n📅 Iba a ser el ${miReservaActual.fecha}`;
