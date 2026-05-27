@@ -70,8 +70,8 @@
         <div id="vista-reservas" class="hidden space-y-4">
             <div class="bg-gray-800 p-4 rounded-xl border-2 border-gray-600">
                 <label class="block text-gray-400 font-bold mb-2 uppercase text-sm">Selecciona el día:</label>
-                <!-- AQUÍ EL CAMBIO ESTÉTICO: p-2 en móvil, md:p-4 en PC, y tamaño de texto ajustado -->
-                <input type="date" id="input-fecha-lista" onchange="descargarListaReservas()" class="w-full bg-gray-900 border-2 border-gray-500 p-2 md:p-4 rounded text-white font-bold focus:outline-none text-lg md:text-xl">
+                <!-- ESTÉTICA MÓVIL: p-1 h-10 text-sm para achicar el cuadrado en móvil -->
+                <input type="date" id="input-fecha-lista" onchange="descargarListaReservas()" class="w-full bg-gray-900 border-2 border-gray-500 p-1 px-2 h-10 text-sm md:h-auto md:p-4 rounded text-white font-bold focus:outline-none md:text-xl">
             </div>
 
             <div id="caja-reservas" class="space-y-4 mt-4">
@@ -81,9 +81,6 @@
 
     </main>
 
-    <!-- ========================================== -->
-    <!-- BLOQUE 1: CÓDIGO VISUAL (NUNCA FALLA)      -->
-    <!-- ========================================== -->
     <script>
         function verPestaña(cual) {
             if (cual === 'aforo') {
@@ -107,9 +104,6 @@
         }
     </script>
 
-    <!-- ========================================== -->
-    <!-- BLOQUE 2: BASE DE DATOS (AISLADO TOTALMENTE)-->
-    <!-- ========================================== -->
     <script>
         const SUPABASE_URL = 'https://ncxrtpmndkmgegtkasub.supabase.co'; 
         const SUPABASE_ANON_KEY = 'sb_publishable_05L29aUddOhhWdeH7qZiqg_3Xq_EKjC';
@@ -203,21 +197,42 @@
             btn.innerText = textoPrevio;
         }
 
+        // EL BOTÓN LIBERAR AHORA BORRA RESERVAS SI NO HAY GENTE FÍSICA
         async function liberar(zona) {
             const btn = (zona === 'Interior') ? document.getElementById('btn-lib-int') : document.getElementById('btn-lib-ter');
             const textoPrevio = btn.innerText;
             btn.innerText = "⏳...";
 
             try {
-                let mesaParaLimpiar = todasLasMesas.find(mesa => mesa.zona === zona && mesa.estado_actual === 'ocupada');
-                
-                if (!mesaParaLimpiar) {
-                    btn.innerText = textoPrevio;
-                    return alert(`⚠️ Ya están todas las mesas de ${zona} vacías.`);
-                }
-
                 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                await supabase.from('mesas').update({ estado_actual: 'libre' }).eq('id', mesaParaLimpiar.id);
+
+                // 1. Buscamos primero si hay alguien ocupando una mesa manualmente
+                let mesaOcupadaManualmente = todasLasMesas.find(mesa => mesa.zona === zona && mesa.estado_actual === 'ocupada');
+                
+                if (mesaOcupadaManualmente) {
+                    // Si la hay, la marcamos como libre
+                    await supabase.from('mesas').update({ estado_actual: 'libre' }).eq('id', mesaOcupadaManualmente.id);
+                } else {
+                    // 2. Si no hay gente de paso, buscamos si hay una reserva que esté estorbando AHORA MISMO
+                    const ahora = new Date();
+                    const hoyIso = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
+                    
+                    let reservaQueEstorba = reservasDeHoy.find(r => {
+                        let mesaVinculada = todasLasMesas.find(m => m.id === r.mesa_id);
+                        if (!mesaVinculada || mesaVinculada.zona !== zona) return false;
+                        
+                        let horaDeReserva = new Date(`${hoyIso}T${r.hora_inicio}`);
+                        return Math.abs((ahora - horaDeReserva) / 60000) < 150; 
+                    });
+
+                    if (reservaQueEstorba) {
+                        // Borramos la reserva de internet para hacer hueco (los que reservaron ya se han ido)
+                        await supabase.from('reservas').delete().eq('id', reservaQueEstorba.id);
+                    } else {
+                        btn.innerText = textoPrevio;
+                        return alert(`⚠️ Ya están todas las mesas de ${zona} completamente vacías.`);
+                    }
+                }
                 
                 await actualizarDatos();
             } catch (error) {
