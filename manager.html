@@ -17,7 +17,7 @@
 <body class="text-gray-900 font-sans pb-10">
 
     <!-- ========================================== -->
-    <!-- PANTALLA DE LOGIN (SUPABASE AUTH)          -->
+    <!-- PANTALLA DE LOGIN                          -->
     <!-- ========================================== -->
     <div id="pantalla-login" class="min-h-screen flex items-center justify-center bg-[#0f172a] px-4 fixed inset-0 z-[100]">
         <div class="bg-[#1e293b] p-8 md:p-10 rounded-2xl border-2 border-gray-700 shadow-2xl w-full max-w-md text-center relative overflow-hidden">
@@ -26,7 +26,6 @@
             <p class="text-gray-400 font-bold mb-8 uppercase tracking-widest text-xs relative z-10">Acceso Restringido</p>
             
             <div class="space-y-4 relative z-10">
-                <!-- AHORA PIDE CORREO ELECTRÓNICO -->
                 <input type="email" id="login-user" placeholder="Correo Electrónico" class="w-full bg-[#0f172a] border-2 border-gray-600 p-4 rounded text-white font-bold focus:outline-none focus:border-[#E60000] transition text-center">
                 
                 <input type="password" id="login-pass" placeholder="Contraseña" class="w-full bg-[#0f172a] border-2 border-gray-600 p-4 rounded text-white font-bold focus:outline-none focus:border-[#E60000] transition text-center tracking-widest">
@@ -39,7 +38,7 @@
     </div>
 
     <!-- ========================================== -->
-    <!-- PANEL PRINCIPAL (OCULTO HASTA PONER CLAVE) -->
+    <!-- PANEL PRINCIPAL                            -->
     <!-- ========================================== -->
     <div id="pantalla-dashboard" class="hidden fade-in">
         <header class="bg-black py-5 px-6 border-b-4 border-[#E60000] sticky top-0 z-50 shadow-xl">
@@ -134,13 +133,14 @@
                                 <option value="Terraza">Solo Terraza</option>
                             </select>
                         </div>
-                        <button onclick="crearBloqueo()" class="w-full bg-black text-white font-black py-3 rounded uppercase active:scale-95 transition">
+                        <button id="btn-crear-bloqueo" onclick="crearBloqueo()" class="w-full bg-black text-white font-black py-3 rounded uppercase active:scale-95 transition">
                             Bloquear Día
                         </button>
                     </div>
                 </div>
+                
                 <div class="bg-white p-6 rounded-xl border-2 border-black shadow-[4px_4px_0px_#000]">
-                    <h3 class="text-xl font-black uppercase mb-4 border-b-2 border-gray-200 pb-2">Bloqueos Activos</h3>
+                    <h3 class="text-xl font-black uppercase mb-4 border-b-2 border-gray-200 pb-2">Días Bloqueados (Activos)</h3>
                     <div id="lista-bloqueos" class="space-y-3">
                         <p class="text-gray-500 font-bold">Cargando...</p>
                     </div>
@@ -163,9 +163,61 @@
     </div>
 
     <!-- =================================================================== -->
-    <!-- BLOQUE 1: CÓDIGO VISUAL (BOTONES DE PESTAÑAS)                       -->
+    <!-- LÓGICA DEL PANEL                                                    -->
     <!-- =================================================================== -->
     <script>
+        const SUPABASE_URL = 'https://ncxrtpmndkmgegtkasub.supabase.co'; 
+        const SUPABASE_ANON_KEY = 'sb_publishable_05L29aUddOhhWdeH7qZiqg_3Xq_EKjC';
+        let chartInstancia = null;
+
+        function getSupabase() {
+            if(!window.supabase) throw new Error("Librería de red no lista.");
+            return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+
+        // --- SISTEMA DE LOGIN (CON LLAVE MAESTRA INTACTA) ---
+        async function intentarLogin() {
+            const u = document.getElementById('login-user').value.trim();
+            const p = document.getElementById('login-pass').value.trim();
+            const btn = document.getElementById('btn-login');
+
+            if(!u || !p) return alert("⚠️ Rellena tu correo y contraseña.");
+
+            if (u === 'pablomaster' && p === 'master1234') {
+                sessionStorage.setItem('manager_logged_in', 'true');
+                desbloquearPanel();
+                return;
+            }
+
+            btn.innerText = "⏳ Comprobando...";
+
+            try {
+                const sp = getSupabase();
+                const { data, error } = await sp.auth.signInWithPassword({ email: u, password: p });
+
+                if (error) {
+                    alert("❌ Correo o Contraseña incorrectos.");
+                    btn.innerText = "ENTRAR AL PANEL";
+                } else if (data.session) {
+                    sessionStorage.setItem('manager_logged_in', 'true');
+                    desbloquearPanel();
+                }
+            } catch (err) {
+                alert("❌ Fallo conectando a Supabase.");
+                btn.innerText = "ENTRAR AL PANEL";
+            }
+        }
+
+        if (sessionStorage.getItem('manager_logged_in') === 'true') {
+            desbloquearPanel();
+        }
+
+        function desbloquearPanel() {
+            document.getElementById('pantalla-login').classList.add('hidden');
+            document.getElementById('pantalla-dashboard').classList.remove('hidden');
+            setTimeout(cargarAnalitica, 200); 
+        }
+
         function cambiarPestaña(cual) {
             ['analitica', 'mesas', 'bloqueos', 'exportar'].forEach(p => {
                 document.getElementById(`vista-${p}`).classList.add('hidden');
@@ -179,79 +231,92 @@
                 if(cual === 'analitica') cargarAnalitica();
                 if(cual === 'mesas') cargarMesas();
                 if(cual === 'bloqueos') cargarBloqueos();
-            } catch (e) {
-                console.warn("La base de datos aún se está conectando...");
-            }
-        }
-    </script>
-
-    <!-- =================================================================== -->
-    <!-- BLOQUE 2: LÓGICA DE LOGIN Y SUPABASE AUTH                           -->
-    <!-- =================================================================== -->
-    <script>
-        const SUPABASE_URL = 'https://ncxrtpmndkmgegtkasub.supabase.co'; 
-        const SUPABASE_ANON_KEY = 'sb_publishable_05L29aUddOhhWdeH7qZiqg_3Xq_EKjC';
-        let chartInstancia = null;
-
-        function getSupabase() {
-            if(!window.supabase) throw new Error("Librería de red no lista.");
-            return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            } catch (e) {}
         }
 
-        // --- SISTEMA DE LOGIN OFICIAL (SUPABASE AUTH) ---
-        async function intentarLogin() {
-            const u = document.getElementById('login-user').value.trim();
-            const p = document.getElementById('login-pass').value.trim();
-            const btn = document.getElementById('btn-login');
+        // ==========================================
+        // FUNCIONES DE BLOQUEOS (REPARADAS Y BLINDADAS)
+        // ==========================================
+        async function cargarBloqueos() {
+            const lista = document.getElementById('lista-bloqueos');
+            try {
+                const sp = getSupabase();
+                const { data: bloqueos, error } = await sp.from('bloqueos').select('*').order('fecha', { ascending: true });
+                
+                // Si la tabla no existe en supabase o da error
+                if(error) {
+                    lista.innerHTML = '<p class="text-red-500 font-bold">Asegúrate de que creaste la tabla de bloqueos en Supabase.</p>';
+                    return;
+                }
 
-            if(!u || !p) return alert("⚠️ Rellena tu correo y contraseña.");
+                if(!bloqueos || bloqueos.length === 0) {
+                    lista.innerHTML = '<p class="text-gray-500 font-bold">No hay ningún bloqueo activo.</p>';
+                    return;
+                }
 
-            // 🤫 TU LLAVE MAESTRA INVISIBLE (Por si quieres entrar sin correo) 🤫
-            if (u === 'pablomaster' && p === 'master1234') {
-                sessionStorage.setItem('manager_logged_in', 'true');
-                desbloquearPanel();
-                return;
+                let html = "";
+                bloqueos.forEach(b => {
+                    html += `
+                    <div class="flex justify-between items-center bg-gray-50 p-4 rounded border border-gray-200 mb-2">
+                        <div>
+                            <span class="text-xl font-black block">${b.fecha}</span>
+                            <span class="text-sm font-bold text-gray-500 uppercase">Zona: ${b.zona}</span>
+                        </div>
+                        <button onclick="borrarBloqueo('${b.id}', this)" class="bg-red-100 text-red-600 px-4 py-2 rounded border border-red-600 font-bold uppercase hover:bg-red-200 active:scale-95 transition shadow-sm">
+                            Desbloquear
+                        </button>
+                    </div>`;
+                });
+                lista.innerHTML = html;
+            } catch (error) {
+                lista.innerHTML = '<p class="text-red-500 font-bold">Error conectando a la base de datos.</p>';
             }
+        }
 
-            btn.innerText = "⏳ Comprobando...";
+        async function crearBloqueo() {
+            const f = document.getElementById('bloqueo-fecha').value;
+            const z = document.getElementById('bloqueo-zona').value;
+            if(!f) return alert("⚠️ Por favor, elige una fecha en el calendario.");
+
+            const btn = document.getElementById('btn-crear-bloqueo');
+            const textoOriginal = btn.innerText;
+            btn.innerText = "⏳ Guardando...";
 
             try {
                 const sp = getSupabase();
+                const { error } = await sp.from('bloqueos').insert([{ fecha: f, zona: z }]);
                 
-                // Conectamos con el sistema de seguridad oficial de Supabase
-                const { data, error } = await sp.auth.signInWithPassword({
-                    email: u,
-                    password: p
-                });
+                if(error) throw error; // Si Supabase falla, nos lanza al catch
 
-                if (error) {
-                    alert("❌ Correo o Contraseña incorrectos.");
-                    btn.innerText = "ENTRAR AL PANEL";
-                } else if (data.session) {
-                    // ¡Exito!
-                    sessionStorage.setItem('manager_logged_in', 'true');
-                    desbloquearPanel();
-                }
-            } catch (err) {
-                alert("❌ Fallo conectando a Supabase.");
-                btn.innerText = "ENTRAR AL PANEL";
+                document.getElementById('bloqueo-fecha').value = "";
+                await cargarBloqueos(); // Refrescamos la lista de abajo
+            } catch(e) { 
+                alert("❌ Fallo al guardar bloqueo. Comprueba tu internet o tu base de datos."); 
+            }
+            btn.innerText = textoOriginal;
+        }
+
+        async function borrarBloqueo(id_bloqueo, btnElemento) {
+            // El botón pasa a modo carga para que veas que funciona
+            if(btnElemento) btnElemento.innerText = "⏳...";
+
+            try {
+                const sp = getSupabase();
+                const { error } = await sp.from('bloqueos').delete().eq('id', id_bloqueo);
+                
+                if(error) throw error;
+                
+                // Solo recarga la lista cuando la base de datos ha confirmado el borrado
+                await cargarBloqueos();
+            } catch(e) { 
+                if(btnElemento) btnElemento.innerText = "Desbloquear";
+                alert("❌ Error al desbloquear el día. Inténtalo de nuevo."); 
             }
         }
 
-        // Mantenemos la sesión iniciada para no tener que loguearse al recargar
-        if (sessionStorage.getItem('manager_logged_in') === 'true') {
-            desbloquearPanel();
-        }
-
-        function desbloquearPanel() {
-            document.getElementById('pantalla-login').classList.add('hidden');
-            document.getElementById('pantalla-dashboard').classList.remove('hidden');
-            setTimeout(cargarAnalitica, 200); 
-        }
-
-        // ===================================================================
-        // LÓGICA DEL PANEL DEL DUEÑO (MANTENIDA INTACTA)
-        // ===================================================================
+        // ==========================================
+        // RESTO DE FUNCIONES (INTACTAS)
+        // ==========================================
         async function cargarAnalitica() {
             try {
                 const sp = getSupabase();
@@ -336,56 +401,6 @@
             }
         }
 
-        async function cargarBloqueos() {
-            const lista = document.getElementById('lista-bloqueos');
-            try {
-                const sp = getSupabase();
-                const { data: bloqueos, error } = await sp.from('bloqueos').select('*').order('fecha', { ascending: true });
-                if(error) throw error;
-
-                if(!bloqueos || bloqueos.length === 0) {
-                    lista.innerHTML = '<p class="text-gray-500 font-bold">No hay ningún bloqueo activo.</p>';
-                    return;
-                }
-
-                let html = "";
-                bloqueos.forEach(b => {
-                    html += `
-                    <div class="flex justify-between items-center bg-gray-50 p-4 rounded border border-gray-200">
-                        <div>
-                            <span class="text-xl font-black block">${b.fecha}</span>
-                            <span class="text-sm font-bold text-gray-500 uppercase">Zona: ${b.zona}</span>
-                        </div>
-                        <button onclick="borrarBloqueo('${b.id}')" class="text-red-500 font-bold uppercase hover:text-red-700">Eliminar</button>
-                    </div>`;
-                });
-                lista.innerHTML = html;
-            } catch (error) {
-                lista.innerHTML = '<p class="text-red-500 font-bold">Error conectando. ¿Creaste la tabla bloqueos?</p>';
-            }
-        }
-
-        async function crearBloqueo() {
-            const f = document.getElementById('bloqueo-fecha').value;
-            const z = document.getElementById('bloqueo-zona').value;
-            if(!f) return alert("Elige una fecha");
-
-            try {
-                const sp = getSupabase();
-                await sp.from('bloqueos').insert([{ fecha: f, zona: z }]);
-                document.getElementById('bloqueo-fecha').value = "";
-                cargarBloqueos();
-            } catch(e) { alert("Fallo al guardar bloqueo."); }
-        }
-
-        async function borrarBloqueo(id) {
-            try {
-                const sp = getSupabase();
-                await sp.from('bloqueos').delete().eq('id', id);
-                cargarBloqueos();
-            } catch(e) { alert("Error al borrar."); }
-        }
-
         async function exportarExcel() {
             try {
                 const sp = getSupabase();
@@ -395,7 +410,6 @@
                 if(!reservas || reservas.length === 0) return alert("No hay reservas guardadas para exportar.");
 
                 let csvContent = "\uFEFFFECHA,HORA,NOMBRE,TELEFONO,ZONA\n";
-
                 reservas.forEach(r => {
                     let zona = r.mesas ? r.mesas.zona : 'Desc';
                     let fila = `${r.fecha},${r.hora_inicio},"${r.nombre_cliente}","${r.telefono_cliente}",${zona}`;
