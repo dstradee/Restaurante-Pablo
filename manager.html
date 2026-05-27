@@ -6,17 +6,14 @@
     <title>Manager - Restaurante de Pablo</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- Librería para las gráficas premium -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { margin: 0; padding: 0; background-color: #f3f4f6; }
-        /* Scrollbar invisible para que parezca app nativa */
         ::-webkit-scrollbar { width: 0px; }
     </style>
 </head>
 <body class="text-gray-900 font-sans pb-10">
 
-    <!-- CABECERA DEL DUEÑO -->
     <header class="bg-black py-5 px-6 border-b-4 border-[#E60000] sticky top-0 z-50 shadow-xl">
         <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between md:items-center gap-4">
             <div>
@@ -24,7 +21,6 @@
                 <p class="text-gray-400 text-sm font-bold uppercase tracking-widest mt-1">Panel de Dirección</p>
             </div>
             
-            <!-- NAVEGACIÓN -->
             <div class="flex gap-2 overflow-x-auto pb-2 md:pb-0">
                 <button onclick="cambiarPestaña('analitica')" id="tab-analitica" class="bg-white text-black px-4 py-2 rounded font-black uppercase text-xs md:text-sm shadow whitespace-nowrap">📊 Analítica</button>
                 <button onclick="cambiarPestaña('mesas')" id="tab-mesas" class="bg-gray-800 text-gray-300 hover:text-white px-4 py-2 rounded font-black uppercase text-xs md:text-sm whitespace-nowrap transition">🪑 Mesas</button>
@@ -36,33 +32,25 @@
 
     <main class="max-w-6xl mx-auto p-4 mt-4">
 
-        <!-- ========================================== -->
-        <!-- PESTAÑA 1: ANALÍTICA (EL "ORO")            -->
-        <!-- ========================================== -->
+        <!-- PESTAÑA 1: ANALÍTICA -->
         <div id="vista-analitica" class="space-y-6 block">
-            
-            <!-- KPIs (Tarjetas de métricas clave) -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="bg-white p-6 rounded-xl border-2 border-black shadow-[4px_4px_0px_#000]">
-                    <h3 class="text-gray-500 font-bold uppercase text-xs tracking-widest mb-1">Reservas (Últimos 7 días)</h3>
+                    <h3 class="text-gray-500 font-bold uppercase text-xs tracking-widest mb-1">Total Reservas</h3>
                     <div class="text-5xl font-black text-black" id="kpi-reservas">--</div>
                     <p class="text-green-600 font-bold text-sm mt-2">▲ Crecimiento estable</p>
                 </div>
-                
                 <div class="bg-white p-6 rounded-xl border-2 border-black shadow-[4px_4px_0px_#000]">
                     <h3 class="text-gray-500 font-bold uppercase text-xs tracking-widest mb-1">Zona más rentable</h3>
                     <div class="text-4xl font-black text-[#E60000] uppercase mt-2" id="kpi-zona">--</div>
                     <p class="text-gray-500 font-bold text-sm mt-2">Basado en volumen</p>
                 </div>
-
                 <div class="bg-white p-6 rounded-xl border-2 border-black shadow-[4px_4px_0px_#000]">
                     <h3 class="text-gray-500 font-bold uppercase text-xs tracking-widest mb-1">Ratio de No-Show</h3>
                     <div class="text-5xl font-black text-black">4.2<span class="text-2xl">%</span></div>
                     <p class="text-gray-500 font-bold text-sm mt-2">Estimación mensual</p>
                 </div>
             </div>
-
-            <!-- GRÁFICA -->
             <div class="bg-white p-6 rounded-xl border-2 border-black shadow-[4px_4px_0px_#000]">
                 <h3 class="text-xl font-black uppercase mb-4 border-b-2 border-gray-200 pb-2">Flujo de Reservas por Hora</h3>
                 <div class="relative h-64 w-full">
@@ -71,53 +59,38 @@
             </div>
         </div>
 
-        <!-- ========================================== -->
-        <!-- PESTAÑA 2: GESTIÓN DE MESAS                -->
-        <!-- ========================================== -->
+        <!-- PESTAÑA 2: GESTIÓN DE MESAS -->
         <div id="vista-mesas" class="hidden space-y-6">
             <div class="bg-yellow-100 border-l-4 border-yellow-500 p-4 rounded text-yellow-800 font-bold shadow mb-6">
-                💡 Añade o quita mesas de tu local de forma instantánea. El panel de camareros y el motor de reservas web se actualizarán solos.
+                💡 Añade o quita mesas de tu local de forma instantánea.
             </div>
-
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                <!-- GESTOR INTERIOR -->
                 <div class="bg-white p-6 rounded-xl border-2 border-black shadow-[4px_4px_0px_#000] text-center">
                     <h2 class="text-3xl font-black text-blue-600 uppercase mb-2">Interior</h2>
                     <p class="text-gray-500 font-bold uppercase text-sm mb-6">Mesas Físicas Totales</p>
-                    
                     <div class="text-8xl font-black mb-8" id="total-interior">--</div>
-                    
                     <div class="flex justify-center gap-4">
                         <button onclick="modificarMesas('Interior', -1)" class="w-16 h-16 bg-red-100 text-red-600 border-2 border-red-600 rounded-full text-3xl font-black active:scale-90 transition shadow-md">-</button>
                         <button onclick="modificarMesas('Interior', 1)" class="w-16 h-16 bg-green-100 text-green-600 border-2 border-green-600 rounded-full text-3xl font-black active:scale-90 transition shadow-md">+</button>
                     </div>
                 </div>
-
-                <!-- GESTOR TERRAZA -->
                 <div class="bg-white p-6 rounded-xl border-2 border-black shadow-[4px_4px_0px_#000] text-center">
                     <h2 class="text-3xl font-black text-orange-500 uppercase mb-2">Terraza</h2>
                     <p class="text-gray-500 font-bold uppercase text-sm mb-6">Mesas Físicas Totales</p>
-                    
                     <div class="text-8xl font-black mb-8" id="total-terraza">--</div>
-                    
                     <div class="flex justify-center gap-4">
                         <button onclick="modificarMesas('Terraza', -1)" class="w-16 h-16 bg-red-100 text-red-600 border-2 border-red-600 rounded-full text-3xl font-black active:scale-90 transition shadow-md">-</button>
                         <button onclick="modificarMesas('Terraza', 1)" class="w-16 h-16 bg-green-100 text-green-600 border-2 border-green-600 rounded-full text-3xl font-black active:scale-90 transition shadow-md">+</button>
                     </div>
                 </div>
-
             </div>
         </div>
 
-        <!-- ========================================== -->
-        <!-- PESTAÑA 3: BLOQUEOS DE CALENDARIO          -->
-        <!-- ========================================== -->
+        <!-- PESTAÑA 3: BLOQUEOS DE CALENDARIO -->
         <div id="vista-bloqueos" class="hidden space-y-6">
             <div class="bg-red-100 border-l-4 border-red-600 p-4 rounded text-red-800 font-bold shadow mb-6">
-                🔒 Bloquea días completos si cierras por festivo, reforma o evento privado. No entrarán reservas web.
+                🔒 Bloquea días completos si cierras por festivo, reforma o evento privado.
             </div>
-
             <div class="bg-white p-6 rounded-xl border-2 border-black shadow-[4px_4px_0px_#000]">
                 <h3 class="text-xl font-black uppercase mb-4">Añadir Nuevo Bloqueo</h3>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
@@ -138,7 +111,6 @@
                     </button>
                 </div>
             </div>
-
             <div class="bg-white p-6 rounded-xl border-2 border-black shadow-[4px_4px_0px_#000]">
                 <h3 class="text-xl font-black uppercase mb-4 border-b-2 border-gray-200 pb-2">Bloqueos Activos</h3>
                 <div id="lista-bloqueos" class="space-y-3">
@@ -147,15 +119,12 @@
             </div>
         </div>
 
-        <!-- ========================================== -->
-        <!-- PESTAÑA 4: EXPORTACIÓN                     -->
-        <!-- ========================================== -->
+        <!-- PESTAÑA 4: EXPORTACIÓN -->
         <div id="vista-exportar" class="hidden space-y-6 text-center">
             <div class="bg-white p-10 rounded-xl border-2 border-black shadow-[6px_6px_0px_#000] max-w-2xl mx-auto mt-10">
                 <div class="text-6xl mb-6">📊</div>
                 <h2 class="text-3xl font-black uppercase mb-4">Base de Datos de Clientes</h2>
-                <p class="text-gray-600 font-bold mb-8">Descarga el histórico completo de reservas en formato CSV (Excel). Ideal para auditorías, marketing o para saber qué clientes repiten más.</p>
-                
+                <p class="text-gray-600 font-bold mb-8">Descarga el histórico completo de reservas en formato CSV (Excel).</p>
                 <button onclick="exportarExcel()" class="bg-green-600 hover:bg-green-700 text-white text-2xl font-black py-4 px-8 rounded-xl shadow-lg active:scale-95 transition uppercase w-full">
                     Descargar Excel (CSV)
                 </button>
@@ -164,56 +133,71 @@
 
     </main>
 
-    <!-- ========================================== -->
-    <!-- LÓGICA JAVASCRIPT                          -->
-    <!-- ========================================== -->
+    <!-- =================================================================== -->
+    <!-- BLOQUE 1: CÓDIGO VISUAL (BOTONES DE PESTAÑAS) - NUNCA FALLARÁ AHORA -->
+    <!-- =================================================================== -->
     <script>
-        const SUPABASE_URL = 'https://ncxrtpmndkmgegtkasub.supabase.co'; 
-        const SUPABASE_ANON_KEY = 'sb_publishable_05L29aUddOhhWdeH7qZiqg_3Xq_EKjC';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        let chartInstancia = null;
-
-        // --- SISTEMA DE PESTAÑAS ---
         function cambiarPestaña(cual) {
+            // Ocultamos todas
             ['analitica', 'mesas', 'bloqueos', 'exportar'].forEach(p => {
                 document.getElementById(`vista-${p}`).classList.add('hidden');
                 document.getElementById(`tab-${p}`).className = "bg-gray-800 text-gray-300 hover:text-white px-4 py-2 rounded font-black uppercase text-xs md:text-sm whitespace-nowrap transition";
             });
 
+            // Mostramos la elegida
             document.getElementById(`vista-${cual}`).classList.remove('hidden');
             document.getElementById(`tab-${cual}`).className = "bg-white text-black px-4 py-2 rounded font-black uppercase text-xs md:text-sm shadow whitespace-nowrap";
 
-            if(cual === 'analitica') cargarAnalitica();
-            if(cual === 'mesas') cargarMesas();
-            if(cual === 'bloqueos') cargarBloqueos();
+            // Intentamos cargar datos, si hay error de BD, no romperá la pestaña
+            try {
+                if(cual === 'analitica') cargarAnalitica();
+                if(cual === 'mesas') cargarMesas();
+                if(cual === 'bloqueos') cargarBloqueos();
+            } catch (e) {
+                console.warn("La base de datos aún se está conectando...");
+            }
+        }
+    </script>
+
+    <!-- =================================================================== -->
+    <!-- BLOQUE 2: BASE DE DATOS Y LÓGICA (COMPLETAMENTE AISLADO)            -->
+    <!-- =================================================================== -->
+    <script>
+        const SUPABASE_URL = 'https://ncxrtpmndkmgegtkasub.supabase.co'; 
+        const SUPABASE_ANON_KEY = 'sb_publishable_05L29aUddOhhWdeH7qZiqg_3Xq_EKjC';
+        
+        let chartInstancia = null;
+
+        // Función segura para crear Supabase
+        function getSupabase() {
+            if(!window.supabase) throw new Error("Librería de red no lista.");
+            return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         }
 
-        // --- 1. ANALÍTICA (EL ORO) ---
         async function cargarAnalitica() {
             try {
-                const { data: reservas } = await supabase.from('reservas').select('hora_inicio, mesas(zona), fecha');
+                const sp = getSupabase();
+                const { data: reservas, error } = await sp.from('reservas').select('hora_inicio, mesas(zona), fecha');
+                if (error) throw error;
                 
-                // 1. Total últimos 7 días
-                document.getElementById('kpi-reservas').innerText = reservas.length; // Simplificado para el dashboard
+                const datos = reservas || [];
 
-                // 2. Zona más rentable
+                document.getElementById('kpi-reservas').innerText = datos.length;
+
                 let intCount = 0; let terCount = 0;
                 let horasContador = {};
 
-                reservas.forEach(r => {
+                datos.forEach(r => {
                     if(r.mesas && r.mesas.zona === 'Interior') intCount++;
                     if(r.mesas && r.mesas.zona === 'Terraza') terCount++;
-                    
                     let hora = r.hora_inicio.substring(0,2) + ":00";
                     horasContador[hora] = (horasContador[hora] || 0) + 1;
                 });
 
                 document.getElementById('kpi-zona').innerText = (intCount >= terCount) ? 'Interior' : 'Terraza';
 
-                // 3. Gráfica de horas
                 let etiquetas = Object.keys(horasContador).sort();
-                let datos = etiquetas.map(e => horasContador[e]);
+                let nums = etiquetas.map(e => horasContador[e]);
 
                 const ctx = document.getElementById('graficaReservas').getContext('2d');
                 if(chartInstancia) chartInstancia.destroy();
@@ -223,8 +207,8 @@
                     data: {
                         labels: etiquetas.length > 0 ? etiquetas : ['13:00','14:00','15:00','20:00','21:00','22:00'],
                         datasets: [{
-                            label: 'Volumen de Reservas',
-                            data: datos.length > 0 ? datos : [5, 12, 8, 15, 22, 10], // Datos falsos si está vacío para que se vea bonito
+                            label: 'Volumen',
+                            data: nums.length > 0 ? nums : [0,0,0,0,0,0], 
                             backgroundColor: '#E60000',
                             borderRadius: 4
                         }]
@@ -232,61 +216,80 @@
                     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
                 });
 
-            } catch (error) { console.error("Error analítica", error); }
+            } catch (error) { 
+                console.error("Error analítica", error); 
+                document.getElementById('kpi-reservas').innerText = "❌";
+            }
         }
 
-        // --- 2. GESTIÓN DE MESAS ---
         async function cargarMesas() {
-            const { data: mesas } = await supabase.from('mesas').select('*');
-            let i = 0; let t = 0;
-            mesas.forEach(m => {
-                if(m.zona === 'Interior') i++;
-                if(m.zona === 'Terraza') t++;
-            });
-            document.getElementById('total-interior').innerText = i;
-            document.getElementById('total-terraza').innerText = t;
+            try {
+                const sp = getSupabase();
+                const { data: mesas, error } = await sp.from('mesas').select('*');
+                if(error) throw error;
+
+                let i = 0; let t = 0;
+                (mesas || []).forEach(m => {
+                    if(m.zona === 'Interior') i++;
+                    if(m.zona === 'Terraza') t++;
+                });
+                document.getElementById('total-interior').innerText = i;
+                document.getElementById('total-terraza').innerText = t;
+            } catch (error) {
+                console.error(error);
+                document.getElementById('total-interior').innerText = "❌";
+                document.getElementById('total-terraza').innerText = "❌";
+            }
         }
 
         async function modificarMesas(zona, cantidad) {
             if(!confirm(`¿Seguro que quieres ${cantidad > 0 ? 'añadir' : 'quitar'} 1 mesa en ${zona}?`)) return;
             
-            if(cantidad > 0) {
-                // Añadir
-                await supabase.from('mesas').insert([{ zona: zona, estado_actual: 'libre' }]);
-            } else {
-                // Quitar (Buscamos 1 mesa libre de esa zona y la borramos)
-                const { data: mesasZona } = await supabase.from('mesas').select('id').eq('zona', zona).eq('estado_actual', 'libre').limit(1);
-                if(mesasZona && mesasZona.length > 0) {
-                    await supabase.from('mesas').delete().eq('id', mesasZona[0].id);
+            try {
+                const sp = getSupabase();
+                if(cantidad > 0) {
+                    await sp.from('mesas').insert([{ zona: zona, estado_actual: 'libre' }]);
                 } else {
-                    return alert("No se puede borrar. Asegúrate de que haya alguna mesa libre en esa zona primero.");
+                    const { data: mesasZona } = await sp.from('mesas').select('id').eq('zona', zona).eq('estado_actual', 'libre').limit(1);
+                    if(mesasZona && mesasZona.length > 0) {
+                        await sp.from('mesas').delete().eq('id', mesasZona[0].id);
+                    } else {
+                        return alert("No se puede borrar. Asegúrate de que haya alguna mesa libre y sin clientes en esa zona primero.");
+                    }
                 }
+                cargarMesas(); 
+            } catch (error) {
+                alert("Error de conexión al modificar la mesa.");
             }
-            cargarMesas(); // Recargamos
         }
 
-        // --- 3. BLOQUEOS DE CALENDARIO ---
         async function cargarBloqueos() {
             const lista = document.getElementById('lista-bloqueos');
-            const { data: bloqueos } = await supabase.from('bloqueos').select('*').order('fecha', { ascending: true });
-            
-            if(!bloqueos || bloqueos.length === 0) {
-                lista.innerHTML = '<p class="text-gray-500 font-bold">No hay ningún bloqueo activo.</p>';
-                return;
-            }
+            try {
+                const sp = getSupabase();
+                const { data: bloqueos, error } = await sp.from('bloqueos').select('*').order('fecha', { ascending: true });
+                if(error) throw error;
 
-            let html = "";
-            bloqueos.forEach(b => {
-                html += `
-                <div class="flex justify-between items-center bg-gray-50 p-4 rounded border border-gray-200">
-                    <div>
-                        <span class="text-xl font-black block">${b.fecha}</span>
-                        <span class="text-sm font-bold text-gray-500 uppercase">Zona: ${b.zona}</span>
-                    </div>
-                    <button onclick="borrarBloqueo('${b.id}')" class="text-red-500 font-bold uppercase hover:text-red-700">Eliminar</button>
-                </div>`;
-            });
-            lista.innerHTML = html;
+                if(!bloqueos || bloqueos.length === 0) {
+                    lista.innerHTML = '<p class="text-gray-500 font-bold">No hay ningún bloqueo activo.</p>';
+                    return;
+                }
+
+                let html = "";
+                bloqueos.forEach(b => {
+                    html += `
+                    <div class="flex justify-between items-center bg-gray-50 p-4 rounded border border-gray-200">
+                        <div>
+                            <span class="text-xl font-black block">${b.fecha}</span>
+                            <span class="text-sm font-bold text-gray-500 uppercase">Zona: ${b.zona}</span>
+                        </div>
+                        <button onclick="borrarBloqueo('${b.id}')" class="text-red-500 font-bold uppercase hover:text-red-700">Eliminar</button>
+                    </div>`;
+                });
+                lista.innerHTML = html;
+            } catch (error) {
+                lista.innerHTML = '<p class="text-red-500 font-bold">Error conectando con la base de datos (Ejecuta el SQL de bloqueos).</p>';
+            }
         }
 
         async function crearBloqueo() {
@@ -294,43 +297,56 @@
             const z = document.getElementById('bloqueo-zona').value;
             if(!f) return alert("Elige una fecha");
 
-            await supabase.from('bloqueos').insert([{ fecha: f, zona: z }]);
-            document.getElementById('bloqueo-fecha').value = "";
-            cargarBloqueos();
+            try {
+                const sp = getSupabase();
+                await sp.from('bloqueos').insert([{ fecha: f, zona: z }]);
+                document.getElementById('bloqueo-fecha').value = "";
+                cargarBloqueos();
+            } catch(e) { alert("Asegúrate de haber creado la tabla Bloqueos en Supabase con el código SQL."); }
         }
 
         async function borrarBloqueo(id) {
-            await supabase.from('bloqueos').delete().eq('id', id);
-            cargarBloqueos();
+            try {
+                const sp = getSupabase();
+                await sp.from('bloqueos').delete().eq('id', id);
+                cargarBloqueos();
+            } catch(e) { alert("Error al borrar."); }
         }
 
-        // --- 4. EXPORTAR EXCEL (CSV) ---
         async function exportarExcel() {
-            const { data: reservas } = await supabase.from('reservas').select('fecha, hora_inicio, nombre_cliente, telefono_cliente, mesas(zona)');
-            
-            if(!reservas || reservas.length === 0) return alert("No hay datos para exportar.");
+            try {
+                const sp = getSupabase();
+                const { data: reservas, error } = await sp.from('reservas').select('fecha, hora_inicio, nombre_cliente, telefono_cliente, mesas(zona)');
+                if (error) throw error;
+                
+                if(!reservas || reservas.length === 0) return alert("No hay reservas guardadas para exportar.");
 
-            let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "FECHA,HORA,NOMBRE,TELEFONO,ZONA\n"; // Cabeceras
+                // Generador seguro de Excel/CSV (Soporta ñ y tildes gracias a uFEFF)
+                let csvContent = "\uFEFFFECHA,HORA,NOMBRE,TELEFONO,ZONA\n";
 
-            reservas.forEach(r => {
-                let zona = r.mesas ? r.mesas.zona : 'Desc';
-                let fila = `${r.fecha},${r.hora_inicio},"${r.nombre_cliente}","${r.telefono_cliente}",${zona}`;
-                csvContent += fila + "\n";
-            });
+                reservas.forEach(r => {
+                    let zona = r.mesas ? r.mesas.zona : 'Desc';
+                    let fila = `${r.fecha},${r.hora_inicio},"${r.nombre_cliente}","${r.telefono_cliente}",${zona}`;
+                    csvContent += fila + "\n";
+                });
 
-            // Crear enlace de descarga invisible y pulsarlo
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "Historial_Reservas.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                const url = URL.createObjectURL(blob);
+                
+                link.setAttribute("href", url);
+                link.setAttribute("download", "Reservas_Restaurante.csv");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+            } catch (error) {
+                alert("Error de conexión al exportar.");
+            }
         }
 
-        // INICIAR
-        cargarAnalitica();
+        // Cargar por defecto si está listo
+        setTimeout(cargarAnalitica, 500);
     </script>
 </body>
 </html>
